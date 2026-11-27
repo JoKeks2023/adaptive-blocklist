@@ -1,0 +1,10 @@
+# Profiles combine modules. Add a profile here - no code changes required.
+profiles:
+  desktop:
+    name: Desktop
+    description: DNS protection for desktop computers
+    modules:
+      - advertising
+      - tracking
+      - telemetry
+      - malware

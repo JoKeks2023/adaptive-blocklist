@@ -1,0 +1,179 @@
+# Source registry. Every source must be verified (URL reachable, format known,
+# license documented) before it is set to `status: active`.
+# Anything that could not be verified is kept as `status: pending` with the reason.
+#
+# Fields:
+#   format             hosts | domains   (declared, never auto-detected)
+#   min_entries        sanity floor; fewer valid domains => source marked too_small
+#   max_invalid_ratio  fraction of non-matching entries tolerated (default 0.02)
+#   required           false => a failing source does not fail its module (default true)
+#   verified           date the URL/format/license were last checked by a human/agent
+sources:
+  stevenblack-unified:
+    name: StevenBlack/hosts (unified hosts, adware + malware)
+    url: https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+    homepage: https://github.com/StevenBlack/hosts
+    format: hosts
+    license: MIT
+    license_url: https://github.com/StevenBlack/hosts/blob/master/license.txt
+    purpose: Consolidated, de-duplicated hosts file of reputable adware/malware sources; widely used for DNS blocking.
+    verified: "2026-11-26"
+    min_entries: 50000
+
+  hagezi-popupads:
+    name: HaGeZi Pop-Up Ads
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/popupads-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Blocks pop-up / pop-under / redirect ad networks (mostly aggressive ad networks).
+    verified: "2026-11-26"
+    min_entries: 30000
+
+  stevenblack-2o7net:
+    name: StevenBlack/hosts - add.2o7Net (Adobe Analytics / Omniture tracking)
+    url: https://raw.githubusercontent.com/StevenBlack/hosts/master/data/add.2o7Net/hosts
+    homepage: https://github.com/FadeMind/hosts.extras
+    format: hosts
+    license: MIT
+    license_url: https://github.com/StevenBlack/hosts/blob/master/data/add.2o7Net/update.json
+    purpose: 2o7.net / Omniture analytics tracking hosts, vendored in StevenBlack/hosts.
+    verified: "2026-11-26"
+    min_entries: 1000
+
+  hagezi-native-winoffice:
+    name: HaGeZi Native Tracker - Microsoft (Windows/Office)
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.winoffice-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Telemetry built into Windows, Office and other Microsoft services.
+    verified: "2026-11-26"
+    min_entries: 100
+
+  hagezi-native-apple:
+    name: HaGeZi Native Tracker - Apple
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.apple-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Telemetry built into Apple devices and services.
+    verified: "2026-11-26"
+    min_entries: 50
+
+  hagezi-native-amazon:
+    name: HaGeZi Native Tracker - Amazon
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.amazon-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Telemetry built into Amazon devices (Fire TV, Echo) and services.
+    verified: "2026-11-26"
+    min_entries: 100
+
+  hagezi-native-samsung:
+    name: HaGeZi Native Tracker - Samsung
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.samsung-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Telemetry built into Samsung TVs, phones and appliances.
+    verified: "2026-11-26"
+    min_entries: 50
+
+  hagezi-native-lgwebos:
+    name: HaGeZi Native Tracker - LG webOS
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.lgwebos-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Telemetry built into LG webOS smart TVs.
+    verified: "2026-11-26"
+    min_entries: 100
+
+  hagezi-native-roku:
+    name: HaGeZi Native Tracker - Roku
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.roku-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Telemetry built into Roku streaming devices and TVs.
+    verified: "2026-11-26"
+    min_entries: 20
+
+  hagezi-tif-medium:
+    name: HaGeZi Threat Intelligence Feeds (medium)
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/tif.medium-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Malware, phishing, scam, cryptojacking and C2 domains aggregated from threat-intelligence feeds (medium-size edition).
+    verified: "2026-11-26"
+    min_entries: 100000
+
+  # ---------------------------------------------------------------- pending
+  urlhaus-hostfile:
+    name: abuse.ch URLhaus host file
+    url: https://urlhaus.abuse.ch/downloads/hostfile/
+    homepage: https://urlhaus.abuse.ch/
+    format: hosts
+    license: CC0-1.0
+    license_url: https://urlhaus.abuse.ch/api/
+    purpose: Domains currently distributing malware (very low false-positive rate).
+    verified: "2026-11-26"
+    status: pending
+    pending_reason: "Verified 2026-11-26: the legacy URL returns HTTP 410; since 2026-10-21 abuse.ch exports require a free Auth-Key. Needs a repository secret and a new export URL before activation."
+
+  phishing-database-active:
+    name: Phishing.Database - active phishing domains
+    url: https://raw.githubusercontent.com/mitchellkrogza/Phishing.Database/master/phishing-domains-ACTIVE.txt
+    homepage: https://github.com/mitchellkrogza/Phishing.Database
+    format: domains
+    license: MIT
+    license_url: https://github.com/mitchellkrogza/Phishing.Database/blob/master/LICENSE.md
+    purpose: Actively tracked phishing domains.
+    verified: "2026-11-26"
+    status: pending
+    pending_reason: "URL, format and MIT license verified, but the file is ~11 MB and would make the malware module too large for in-browser composition. Activate once a size/benefit decision is made."
+
+  frogeye-firstparty-trackers:
+    name: Frogeye First-party trackers
+    url: https://hostfiles.frogeye.fr/firstparty-trackers-hosts.txt
+    homepage: https://hostfiles.frogeye.fr/
+    format: hosts
+    license: unverified
+    purpose: CNAME-cloaked first-party trackers.
+    verified: "2026-11-26"
+    status: pending
+    pending_reason: "URL and hosts format verified, but no explicit redistribution license could be confirmed."
+
+  pgl-yoyo-adservers:
+    name: Peter Lowe's Ad and tracking server list
+    url: https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext
+    homepage: https://pgl.yoyo.org/adservers/
+    format: hosts
+    license: unverified
+    purpose: Long-running ad/tracker server list.
+    verified: "2026-11-26"
+    status: pending
+    pending_reason: "URL and format verified, but the license is not stated explicitly (site only says the list may be combined and re-hosted). Also uses 127.0.0.1 and mixed entries; needs a decision."
+
+  windowsspyblocker-spy:
+    name: WindowsSpyBlocker - spy rules
+    url: https://raw.githubusercontent.com/crazy-max/WindowsSpyBlocker/master/data/hosts/spy.txt
+    homepage: https://github.com/crazy-max/WindowsSpyBlocker
+    format: hosts
+    license: MIT
+    license_url: https://github.com/crazy-max/WindowsSpyBlocker/blob/master/LICENSE
+    purpose: Windows telemetry hosts.
+    verified: "2026-11-26"
+    status: pending
+    pending_reason: "Verified reachable and MIT, but the list data header says 'Updated 2022-05-16' - not actively maintained; HaGeZi winoffice covers the same area."

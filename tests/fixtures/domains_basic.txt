@@ -1,0 +1,10 @@
+# Title: Fixture domain list
+! not a comment in this format
+example.org
+Example.ORG
+sub.example.org  # trailing comment
+*.wild.example.com
+||adblock.example.com^
+http://url.example.com/path
+not a domain
+-bad-.example.com

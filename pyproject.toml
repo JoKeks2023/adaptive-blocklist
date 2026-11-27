@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "universal-blocklist"
+version = "0.1.0"
+description = "Configurable DNS blocklist generator for Pi-hole, AdGuard Home and compatible DNS filters"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+universal-blocklist = "blocklist.cli:main"
+
+[tool.setuptools]
+packages = ["blocklist"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

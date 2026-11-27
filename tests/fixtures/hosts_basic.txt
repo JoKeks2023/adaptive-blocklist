@@ -1,0 +1,14 @@
+# Title: Fixture hosts file
+127.0.0.1 localhost
+127.0.0.1 localhost.localdomain
+::1 localhost ip6-localhost
+0.0.0.0 0.0.0.0
+255.255.255.255 broadcasthost
+
+0.0.0.0 ads.Example.com   # inline comment, mixed case
+127.0.0.1 tracker.example.net analytics.example.net
+0.0.0.0 ads.example.com
+0.0.0.0 münchen-ads.de.
+0.0.0.0 bad_host!.example.org
+0.0.0.0 singlelabel
+0.0.0.0 1.2.3.4

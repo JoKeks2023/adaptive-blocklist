@@ -1,0 +1,12 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.venv/
+build/
+.cache/
+node_modules/
+web/dist/
+# Generated at build time, published via GitHub Pages artifact (never committed)
+web/public/lists/
+web/public/data/
+.DS_Store

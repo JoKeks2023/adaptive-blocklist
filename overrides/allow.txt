@@ -1,0 +1,4 @@
+# Allowlist: one domain per line, '#' starts a comment.
+# An entry removes the domain AND all of its subdomains from every generated list.
+# Example:
+# example.com

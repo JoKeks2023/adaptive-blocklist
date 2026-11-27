@@ -1,0 +1,5 @@
+# Custom denylist: one domain per line, '#' starts a comment.
+# These domains end up in the "custom" module (lists/modules/custom.txt).
+# Add "custom" to a profile in config/profiles.yml to include it there.
+# Example:
+# tracker.example.net
