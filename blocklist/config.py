@@ -64,6 +64,7 @@ class Profile:
     description: str
     modules: tuple[str, ...]
     vendors: tuple[str, ...] = ()
+    suggested_vendors: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -190,6 +191,12 @@ def load_profiles(path: Path, modules: dict[str, Module], vendors: dict[str, Mod
             raise ConfigError(f"{where}: must be a mapping")
         refs = raw.get("modules") or []
         vrefs = raw.get("vendors") or []
+        suggested = raw.get("suggested_vendors") or []
+        if not isinstance(suggested, list):
+            raise ConfigError(f"{where}: 'suggested_vendors' must be a list")
+        for ref in suggested:
+            if ref not in vendors:
+                raise ConfigError(f"{where}: unknown suggested vendor {ref!r}")
         if not isinstance(refs, list) or not isinstance(vrefs, list):
             raise ConfigError(f"{where}: 'modules' and 'vendors' must be lists")
         if not refs and not vrefs:
@@ -206,6 +213,7 @@ def load_profiles(path: Path, modules: dict[str, Module], vendors: dict[str, Mod
             description=_require(raw, "description", str, where).strip(),
             modules=tuple(dict.fromkeys(refs)),
             vendors=tuple(dict.fromkeys(vrefs)),
+            suggested_vendors=tuple(dict.fromkeys(suggested)),
         )
     return profiles
 

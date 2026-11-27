@@ -225,6 +225,7 @@ def build_all(config: Config, fetcher: Fetcher, meta: BuildMeta) -> BuildOutput:
                 "description": profile.description,
                 "modules": list(profile.modules),
                 "vendors": list(profile.vendors),
+                "suggested_vendors": list(profile.suggested_vendors),
                 "domains": len(domains),
                 "file": path,
                 "sha256": _sha256(text),

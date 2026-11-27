@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Advanced } from './components/Advanced'
 import { CopyButton } from './components/CopyButton'
-import { ModuleRow } from './components/ModuleRow'
+import { DeviceTypes } from './components/DeviceTypes'
+import { ModuleList } from './components/ModuleList'
 import { SetupGuide } from './components/SetupGuide'
+import { VendorPicker } from './components/VendorPicker'
+import { applyExtras, parseDomainLines } from './lib/extras'
 import { formatBytes, formatCount, mergeDomains, parseHostsList, renderCustomList } from './lib/lists'
 import { downloadBlob, fetchCatalog, fetchHead, fetchText } from './lib/net'
 import { coveredVendors, effectiveItems, matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule, toggleVendor, vendorsOf } from './lib/state'
@@ -9,7 +13,8 @@ import type { Catalog, ModuleEntry, Selection } from './lib/types'
 import { absoluteUrl, issueUrl, siteBase } from './lib/urls'
 
 type Theme = 'system' | 'light' | 'dark'
-const PREVIEW_LINES = 80
+const PREVIEW_LINES = 60
+const THEME_LABEL = { system: 'Auto', light: 'Light', dark: 'Dark' } as const
 
 function useTheme(): [Theme, () => void] {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -62,7 +67,7 @@ export function App() {
     return (
       <main className="page">
         <h1>Universal Blocklist</h1>
-        <p className="callout callout-high" role="alert">
+        <p className="note" role="alert">
           The published lists could not be loaded ({error}). If you are running locally, build them first:{' '}
           <code>python -m blocklist build</code>.
         </p>
@@ -95,14 +100,20 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
   const [preview, setPreview] = useState<{ lines: string[]; total: number | null } | null>(null)
   const [busy, setBusy] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [allowText, setAllowText] = useState('')
+  const [denyText, setDenyText] = useState('')
+
+  const allow = useMemo(() => parseDomainLines(allowText).valid, [allowText])
+  const deny = useMemo(() => parseDomainLines(denyText).valid, [denyText])
+  const hasExtras = allow.length > 0 || deny.length > 0
 
   const items = effectiveItems(selection, catalog)
   const itemsKey = items.map((i) => i.file).join()
   const covered = coveredVendors(selection, catalog)
   const vendors = vendorsOf(catalog)
-  const empty = items.length === 0
+  const empty = items.length === 0 && deny.length === 0
   const profile = catalog.profiles.find((p) => p.id === selection.profileId)!
-  const matched = matchingProfile(selection, catalog)
+  const matched = hasExtras ? null : matchingProfile(selection, catalog)
   const modules = catalog.modules.filter((m) => !(m.include_deny && m.domains === 0))
   const sumDomains = items.reduce((n, m) => n + m.domains, 0)
   const url = useCallback((path: string) => absoluteUrl(path, base), [base])
@@ -119,9 +130,11 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
     )
   }, [base])
 
-  // Preview: published profile -> stream only the head of the file; custom -> compose from module lists.
+  const compose = useCallback(async () => applyExtras(mergeDomains(await loadItems(items)), allow, deny), [items, allow, deny, loadItems])
+
+  // Preview: published profile -> stream only the head of the file; custom -> compose in the browser.
   useEffect(() => {
-    if (!previewOpen) return
+    if (!previewOpen || empty) return
     let cancelled = false
     setLoadError(null)
     setPreview(null)
@@ -131,7 +144,7 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
           const head = await fetchHead(absoluteUrl(matched.file, base), 64 * 1024)
           if (!cancelled) setPreview({ lines: parseHostsList(head).slice(0, PREVIEW_LINES), total: matched.domains })
         } else {
-          const merged = mergeDomains(await loadItems(items))
+          const merged = await compose()
           if (!cancelled) setPreview({ lines: merged.slice(0, PREVIEW_LINES), total: merged.length })
         }
       } catch (e) {
@@ -140,7 +153,7 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
     })()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [previewOpen, matched, itemsKey, loadItems, base])
+  }, [previewOpen, matched, itemsKey, allowText, denyText, base])
 
   const isHigh = (m: ModuleEntry) => m.risk?.level === 'high'
   const riskyOn = items.some(isHigh)
@@ -150,18 +163,19 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
       modules: selection.modules.filter((id) => !isHigh(catalog.modules.find((m) => m.id === id)!)),
       vendors: selection.vendors.filter((id) => !isHigh(vendors.find((v) => v.id === id)!)),
     })
+
   const guideUrls = empty
     ? []
     : matched
       ? [{ label: matched.name, url: url(matched.file) }]
       : items.map((m) => ({ label: m.name, url: url(m.file) }))
-  const names = items.map((m) => m.name)
+
   const onDownload = async () => {
     setLoadError(null)
-    if (matched) return // handled by the plain link below
     setBusy(true)
     try {
-      const merged = mergeDomains(await loadItems(items))
+      const merged = await compose()
+      const names = [...items.map((m) => m.name), ...(deny.length ? ['Your block list'] : [])]
       downloadBlob('universal-blocklist-custom.txt', renderCustomList(merged, names, catalog.build.time, catalog.build.commit.slice(0, 7)))
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e))
@@ -178,207 +192,181 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
   const repo = catalog.build.repository
   const reportUrl = issueUrl(repo, 'broken-service.yml', { config: shareUrl, build: catalog.build.version })
   const suggestUrl = issueUrl(repo, 'block-domain.yml', {})
+  const wikiUrl = repo ? `https://github.com/${repo}/wiki` : null
   const built = new Date(catalog.build.time)
+  const suggested = profile.suggested_vendors ?? []
+  const summary = `${profile.name} · ${selection.vendors.length ? `${selection.vendors.length} brand${selection.vendors.length > 1 ? 's' : ''} · ` : ''}${matched ? formatCount(matched.domains) : `up to ${formatCount(sumDomains)}`} domains`
 
   return (
-    <main className="page">
-      <header className="top">
-        <div>
-          <p className="eyebrow">DNS blocklists</p>
-          <h1>Universal Blocklist</h1>
-        </div>
-        <button type="button" className="icon-btn" onClick={cycleTheme} aria-label={`Theme: ${theme === 'system' ? 'Auto' : theme === 'light' ? 'Light' : 'Dark'}. Activate to change`}>
-          Theme: {theme === 'system' ? 'Auto' : theme === 'light' ? 'Light' : 'Dark'}
-        </button>
-      </header>
-      <p className="lead">
-        Pick your device type, adjust modules and vendors, and subscribe in Pi-hole or AdGuard Home. Lists are rebuilt daily from
-        public sources.
-      </p>
-
-      <details className="explain">
-        <summary>New here? What is this?</summary>
-        <p>
-          A <strong>DNS filter</strong> such as Pi-hole or AdGuard Home runs on a small computer in your network and
-          decides which internet addresses (domains) your devices may look up. A <strong>blocklist</strong> tells it which
-          domains belong to ads, trackers or malware, so those requests never leave your home.
-        </p>
-        <p>
-          Here you choose which kinds of domains to block, then paste one address into your DNS filter. You do not need to
-          download anything; the filter fetches and updates the list itself.
-        </p>
-      </details>
-
-      <section aria-labelledby="h-profile">
-        <h2 id="h-profile">Device type</h2>
-        <div className="segmented" role="radiogroup" aria-label="Device type">
-          {catalog.profiles.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              role="radio"
-              aria-checked={p.id === selection.profileId}
-              className={p.id === selection.profileId ? 'seg seg-on' : 'seg'}
-              onClick={() => setSelection(selectProfile(p.id, catalog))}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
-        <p className="hint">{profile.description}</p>
-      </section>
-
-      <section aria-labelledby="h-modules">
-        <h2 id="h-modules">Modules</h2>
-        <ul className="group">
-          {modules.map((m) => (
-            <ModuleRow
-              key={m.id}
-              module={m}
-              enabled={selection.modules.includes(m.id)}
-              sources={catalog.sources}
-              url={url(m.file)}
-              onToggle={() => setSelection(toggleModule(selection, m.id, catalog))}
-            />
-          ))}
-        </ul>
-        {riskyOn && (
-          <p className="hint">
-            First DNS filter? Entries marked <em>high risk</em> can break updates or smart devices.{' '}
-            <button type="button" className="link inline" onClick={switchOffRisky}>
-              Switch them off to start safely
-            </button>
-          </p>
-        )}
-      </section>
-
-      {vendors.length > 0 && (
-        <section aria-labelledby="h-vendors">
-          <h2 id="h-vendors">Vendors</h2>
-          <p className="hint hint-top">Block the built-in telemetry of the brands you own. Each vendor has its own list.</p>
-          <ul className="group">
-            {vendors.map((v) => (
-              <ModuleRow
-                key={v.id}
-                kind="vendor"
-                module={v}
-                enabled={selection.vendors.includes(v.id)}
-                coveredBy={covered.get(v.id)}
-                sources={catalog.sources}
-                url={url(v.file)}
-                onToggle={() => setSelection(toggleVendor(selection, v.id, catalog))}
-              />
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section aria-labelledby="h-result" className="result">
-        <h2 id="h-result">Your list</h2>
-        {empty ? (
-          <p className="hint">Enable at least one module.</p>
-        ) : matched ? (
-          <>
-            <p className="status status-ok">
-              <strong>{matched.name}</strong> profile · {formatCount(matched.domains)} domains · {formatBytes(matched.bytes)}
-            </p>
-            <p className="hint">This is a published profile with a permanent, subscribable URL:</p>
-            <div className="url-line">
-              <code title={url(matched.file)}>{url(matched.file)}</code>
-              <CopyButton text={url(matched.file)} label="profile URL" />
-            </div>
-          </>
-        ) : (
-          <>
-            <p className="status status-custom">
-              Custom combination · up to {formatCount(sumDomains)} domains{preview?.total != null && !matched ? ` (${formatCount(preview.total)} unique)` : ''}
-            </p>
-            <p className="callout callout-medium">
-              This combination is assembled in your browser and has <strong>no permanent subscription URL</strong>. Download
-              the TXT, or subscribe to the individual module URLs instead:
-            </p>
-            <ul className="mini-urls">
-              {items.map((m) => (
-                <li key={m.id} className="url-line">
-                  <span className="mini-name">{m.name}</span>
-                  <code title={url(m.file)}>{url(m.file)}</code>
-                  <CopyButton text={url(m.file)} label={`${m.name} URL`} />
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        <div className="actions">
-          {matched ? (
-            <a className="btn btn-primary" href={url(matched.file)} download={`${matched.id}.txt`}>Download TXT</a>
-          ) : (
-            <button type="button" className="btn btn-primary" disabled={empty || busy} onClick={onDownload}>
-              {busy ? 'Preparing…' : 'Download TXT'}
-            </button>
-          )}
-          <CopyButton text={shareUrl} label="share link" caption="Copy share link" className="btn-secondary" />
-          <button type="button" className="btn btn-secondary" aria-expanded={previewOpen} disabled={empty} onClick={() => setPreviewOpen(!previewOpen)}>
-            {previewOpen ? 'Hide preview' : 'Preview'}
+    <>
+      <main className="page">
+        <header className="top">
+          <span className="brand">Universal Blocklist</span>
+          <button type="button" className="btn btn-ghost" onClick={cycleTheme} aria-label={`Theme: ${THEME_LABEL[theme]}. Activate to change`}>
+            Theme: {THEME_LABEL[theme]}
           </button>
-        </div>
-        <p className="hint">The share link stores only your profile and module choice, not the list itself.</p>
-        {loadError && <p className="callout callout-high" role="alert">{loadError}</p>}
+        </header>
 
-        {previewOpen && !empty && (
-          <div className="preview" aria-live="polite">
-            {preview ? (
-              <>
-                <pre tabIndex={0}>{preview.lines.map((d) => `0.0.0.0 ${d}`).join('\n')}</pre>
-                <p className="hint">First {preview.lines.length} of {preview.total != null ? formatCount(preview.total) : '…'} entries.</p>
-              </>
-            ) : (
-              <p className="muted" role="status">Loading preview…</p>
-            )}
-          </div>
-        )}
-      </section>
-
-      <SetupGuide urls={guideUrls} isProfile={!!matched} docsUrl={repo ? `https://github.com/${repo}/blob/main/docs/getting-started.md` : null} />
-
-      {(reportUrl || suggestUrl) && (
-        <section aria-labelledby="h-help">
-          <h2 id="h-help">Help improve the lists</h2>
-          <ul className="group">
-            {reportUrl && (
-              <li className="row help-row">
-                <div>
-                  <div className="row-title">Something stopped working?</div>
-                  <p className="row-desc">Report a blocked service. Your current configuration is attached automatically.</p>
-                </div>
-                <a className="btn btn-secondary" href={reportUrl} target="_blank" rel="noreferrer noopener">Report a problem</a>
-              </li>
-            )}
-            {suggestUrl && (
-              <li className="row help-row">
-                <div>
-                  <div className="row-title">Found a domain that should be blocked?</div>
-                  <p className="row-desc">Submit ad, tracking, telemetry or malware domains for review.</p>
-                </div>
-                <a className="btn btn-secondary" href={suggestUrl} target="_blank" rel="noreferrer noopener">Suggest domains</a>
-              </li>
-            )}
-          </ul>
-          <p className="hint">Opens a GitHub issue form; a GitHub account is required.</p>
+        <section className="hero">
+          <h1>Block ads, trackers and telemetry on your network.</h1>
+          <p className="lead">
+            Choose your device type and the brands you own. Paste one address into Pi-hole or AdGuard Home. Lists are rebuilt
+            daily from public sources.
+          </p>
+          <details className="more">
+            <summary>New here? What is this?</summary>
+            <p>
+              A <strong>DNS filter</strong> such as Pi-hole or AdGuard Home runs on a small computer in your network and decides
+              which internet addresses your devices may look up. A <strong>blocklist</strong> tells it which addresses belong to
+              ads, trackers or malware, so those requests never leave your home. You do not download anything: the filter fetches
+              and updates the list itself.
+            </p>
+          </details>
         </section>
-      )}
 
-      <footer className="foot">
-        <p>
-          Built {Number.isNaN(built.getTime()) ? catalog.build.time : built.toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })} ·
-          version {catalog.build.version} ·{' '}
-          <a href={url('data/catalog.json')}>catalog.json</a> · <a href={url('data/stats.json')}>stats.json</a>
-        </p>
-        <p>
-          Entries are exact domains (hosts format, <code>0.0.0.0 domain</code>). Review the Telemetry module before using it on
-          devices that depend on updates or cloud features.
-        </p>
-      </footer>
-    </main>
+        <div className="layout">
+          <div className="config">
+            <section aria-labelledby="h-type">
+              <h2 id="h-type"><span className="step">1</span>Device type</h2>
+              <DeviceTypes catalog={catalog} profileId={selection.profileId} onSelect={(id) => setSelection(selectProfile(id, catalog))} />
+            </section>
+
+            {vendors.length > 0 && (
+              <section aria-labelledby="h-brands">
+                <h2 id="h-brands"><span className="step">2</span>Your brands</h2>
+                <p className="sect-desc">Select the brands of your devices. Only their built-in telemetry is blocked, so nothing is blocked by accident.</p>
+                <VendorPicker
+                  vendors={vendors}
+                  suggestedIds={suggested}
+                  suggestedFor={profile.name}
+                  selected={selection.vendors}
+                  covered={covered}
+                  sources={catalog.sources}
+                  onToggle={(id) => setSelection(toggleVendor(selection, id, catalog))}
+                />
+              </section>
+            )}
+
+            <section aria-labelledby="h-modules">
+              <h2 id="h-modules"><span className="step">3</span>What to block</h2>
+              <ModuleList modules={modules} enabled={selection.modules} sources={catalog.sources} onToggle={(id) => setSelection(toggleModule(selection, id, catalog))} />
+              {riskyOn && (
+                <p className="hint">
+                  First DNS filter? Entries marked high risk can break updates or smart devices.{' '}
+                  <button type="button" className="link inline" onClick={switchOffRisky}>Switch them off to start safely</button>
+                </p>
+              )}
+            </section>
+
+            <Advanced allow={allowText} deny={denyText} onAllow={setAllowText} onDeny={setDenyText} />
+          </div>
+
+          <aside className="result" id="your-list" aria-labelledby="h-result">
+            <h2 id="h-result">Your list</h2>
+            {empty ? (
+              <p className="muted">Turn on at least one module or brand.</p>
+            ) : (
+              <>
+                <p className="summary">{summary}{matched ? ` · ${formatBytes(matched.bytes)}` : ''}</p>
+                <p className={`kind ${matched ? 'kind-perm' : 'kind-custom'}`}>
+                  <span className="dot" aria-hidden="true" />
+                  {matched ? 'Permanent address, subscribe once' : hasExtras ? 'Custom file, download only' : 'Subscribe to these addresses'}
+                </p>
+                {!matched && (
+                  <p className="hint">
+                    {hasExtras
+                      ? 'Your own domains change the list, so it is a custom file with no address. Download it, or subscribe to the addresses below and add your rules in your DNS filter.'
+                      : 'Each address below is permanent. Add all of them to your DNS filter, or download one combined file.'}
+                  </p>
+                )}
+                <ul className="addrs">
+                  {guideUrls.map((u) => (
+                    <li key={u.url}>
+                      {guideUrls.length > 1 && <span className="addr-name">{u.label}</span>}
+                      <div className="addr">
+                        <code title={u.url}>{u.url}</code>
+                        <CopyButton text={u.url} label={`${u.label} address`} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <div className="actions">
+                  {matched ? (
+                    <a className="btn btn-primary" href={url(matched.file)} download={`${matched.id}.txt`}>Download TXT</a>
+                  ) : (
+                    <button type="button" className="btn btn-primary" disabled={busy} onClick={onDownload}>
+                      {busy ? 'Preparing…' : 'Download TXT'}
+                    </button>
+                  )}
+                  <CopyButton text={shareUrl} label="share link" caption="Copy share link" className="btn-secondary" />
+                  <button type="button" className="btn btn-secondary" aria-expanded={previewOpen} onClick={() => setPreviewOpen(!previewOpen)}>
+                    {previewOpen ? 'Hide preview' : 'Preview'}
+                  </button>
+                </div>
+                <p className="hint">The share link stores only your choices, not the list.</p>
+                {loadError && <p className="note" role="alert">{loadError}</p>}
+                {previewOpen && (
+                  <div className="preview" aria-live="polite">
+                    {preview ? (
+                      <>
+                        <pre tabIndex={0}>{preview.lines.map((d) => `0.0.0.0 ${d}`).join('\n')}</pre>
+                        <p className="hint">First {preview.lines.length} of {preview.total != null ? formatCount(preview.total) : '…'} entries.</p>
+                      </>
+                    ) : (
+                      <p className="muted" role="status">Loading preview…</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </aside>
+        </div>
+
+        <SetupGuide urls={guideUrls} isProfile={!!matched} docsUrl={wikiUrl ? `${wikiUrl}/Getting-Started` : null} />
+
+        {(reportUrl || suggestUrl) && (
+          <section aria-labelledby="h-help" className="help">
+            <h2 id="h-help">Help improve the lists</h2>
+            <ul className="help-list">
+              {reportUrl && (
+                <li>
+                  <div>
+                    <strong>Something stopped working?</strong>
+                    <p className="muted">Your configuration is attached automatically.</p>
+                  </div>
+                  <a className="btn btn-secondary" href={reportUrl} target="_blank" rel="noreferrer noopener">Report a problem</a>
+                </li>
+              )}
+              {suggestUrl && (
+                <li>
+                  <div>
+                    <strong>A domain that should be blocked?</strong>
+                    <p className="muted">Ad, tracking, telemetry or malware domains.</p>
+                  </div>
+                  <a className="btn btn-secondary" href={suggestUrl} target="_blank" rel="noreferrer noopener">Suggest domains</a>
+                </li>
+              )}
+            </ul>
+            <p className="hint">Opens a GitHub issue form; a GitHub account is required.</p>
+          </section>
+        )}
+
+        <footer className="foot">
+          <p>
+            Built {Number.isNaN(built.getTime()) ? catalog.build.time : built.toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })} · version{' '}
+            <span className="mono">{catalog.build.version}</span> · <a href={url('data/catalog.json')}>catalog.json</a> ·{' '}
+            <a href={url('data/stats.json')}>stats.json</a>
+            {wikiUrl && <> · <a href={wikiUrl}>Wiki</a></>}
+            {repo && <> · <a href={`https://github.com/${repo}`}>GitHub</a></>}
+          </p>
+          <p>Entries are exact domains (hosts format, <code>0.0.0.0 domain</code>). Review high-risk entries before using them on devices that depend on updates or cloud features.</p>
+        </footer>
+      </main>
+
+      <div className="dock" role="region" aria-label="Your list summary">
+        <span className="dock-text">{empty ? 'Nothing selected' : summary}</span>
+        <a className="btn btn-primary" href="#your-list">Get your list</a>
+      </div>
+    </>
   )
 }

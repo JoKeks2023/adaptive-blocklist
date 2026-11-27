@@ -83,3 +83,21 @@ def test_shipped_profiles_reference_existing_vendors():
     assert {"desktop", "smart-tv", "smart-home", "mobile", "gaming", "universal"} <= set(cfg.profiles)
     assert set(cfg.profiles["smart-tv"].vendors) <= set(cfg.vendors)
     assert main(["--root", str(ROOT), "check-config"]) == 0
+
+
+def test_suggested_vendors_exist_and_defaults_are_empty():
+    cfg = load_config(ROOT)
+    for p in cfg.profiles.values():
+        assert set(p.suggested_vendors) <= set(cfg.vendors)
+    # nothing is blocked for a brand the user did not pick
+    assert cfg.profiles["smart-tv"].vendors == () and "samsung" in cfg.profiles["smart-tv"].suggested_vendors
+
+
+def test_unknown_suggested_vendor_is_a_config_error(tmp_path):
+    shutil.copytree(ROOT / "config", tmp_path / "config")
+    shutil.copytree(ROOT / "overrides", tmp_path / "overrides")
+    (tmp_path / "config/profiles.yml").write_text(
+        "profiles:\n  x:\n    name: X\n    description: d\n    modules: [malware]\n    suggested_vendors: [nope]\n"
+    )
+    with pytest.raises(ConfigError, match="suggested vendor"):
+        load_config(tmp_path)

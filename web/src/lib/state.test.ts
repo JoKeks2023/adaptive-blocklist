@@ -113,3 +113,19 @@ describe('vendors', () => {
     expect(defaultSelection(old).vendors).toEqual([])
   })
 })
+
+import { applyExtras, parseDomainLines } from './extras'
+
+describe('own allow/deny domains', () => {
+  it('parses lines, comments and rejects non-domains', () => {
+    const r = parseDomainLines('Ads.Example.com # note\nhttp://x.com\n*.y.com\n\nexample.org.\n1.2.3.4')
+    expect(r.valid).toEqual(['ads.example.com', 'example.org'])
+    expect(r.invalid).toEqual(['http://x.com', '*.y.com', '1.2.3.4'])
+  })
+  it('allowlist removes the domain and its subdomains but not siblings', () => {
+    expect(applyExtras(['a.example.com', 'example.com', 'badexample.com', 'x.net'], ['example.com'], [])).toEqual(['badexample.com', 'x.net'])
+  })
+  it('adds denied domains, deduped and sorted, unless allow-listed', () => {
+    expect(applyExtras(['b.com'], ['z.com'], ['a.com', 'a.com', 'z.com'])).toEqual(['a.com', 'b.com'])
+  })
+})

@@ -33,6 +33,7 @@ export interface ProfileEntry {
   description: string
   modules: string[]
   vendors?: string[]
+  suggested_vendors?: string[]
   domains: number
   file: string
   bytes: number

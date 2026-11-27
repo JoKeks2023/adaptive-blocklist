@@ -1,39 +1,39 @@
-# Profiles = device types. Each combines content modules and (optionally) vendors.
-# Add a profile here - no code changes required. Users can still change the selection
-# in the configurator; the profile is only the starting point.
+# Profiles = device types. Each is a starting point: content modules, optional default
+# vendors, and `suggested_vendors` (brands shown first for this device type).
+# Users pick their own brand(s) in the configurator, so nothing is blocked that belongs
+# to a brand they do not own. Add a profile here - no code changes required.
 profiles:
   desktop:
     name: Desktop
-    description: DNS protection for desktop computers
-    modules:
-      - advertising
-      - tracking
-      - telemetry
-      - malware
+    description: "Computers and laptops. Includes the Telemetry module (all vendors)."
+    modules: [advertising, tracking, telemetry, malware]
+    suggested_vendors: [microsoft, apple]
 
   smart-tv:
     name: Smart TV
-    description: Smart TVs and streaming boxes. Blocks ads, trackers and the TV vendors' built-in telemetry.
+    description: "Smart TVs and streaming boxes. Choose your TV brand to block its built-in telemetry."
     modules: [advertising, tracking, malware]
-    vendors: [samsung, lg, roku, amazon]
+    suggested_vendors: [samsung, lg, roku, amazon, xiaomi]
 
   smart-home:
     name: Smart Home
-    description: Smart-home and IoT devices. Conservative defaults so devices keep working; add vendors you own.
+    description: "Smart speakers, cameras and hubs. Conservative: pick the brands you actually use."
     modules: [tracking, malware]
-    vendors: [amazon, xiaomi]
+    suggested_vendors: [amazon, xiaomi, samsung]
 
   mobile:
     name: Mobile
-    description: Phones and tablets. Add the vendor of your device to block its built-in telemetry.
+    description: "Phones and tablets. Choose your phone brand to block its built-in telemetry."
     modules: [advertising, tracking, malware]
+    suggested_vendors: [apple, samsung, xiaomi, huawei, oppo-realme, vivo, tiktok]
 
   gaming:
     name: Gaming
-    description: Consoles and gaming PCs. Light protection that avoids breaking online play and stores.
+    description: "Consoles and gaming PCs. Light protection that avoids breaking online play and stores."
     modules: [tracking, malware]
+    suggested_vendors: [microsoft]
 
   universal:
     name: Universal
-    description: A safe baseline for any device - no telemetry blocking.
+    description: "A safe baseline for any device, without telemetry blocking."
     modules: [advertising, tracking, malware]

@@ -11,7 +11,7 @@ export function CopyButton({ text, label, caption = 'Copy', className = '' }: { 
   return (
     <button
       type="button"
-      className={`btn btn-tinted ${className}`}
+      className={`btn btn-secondary btn-sm ${className}`}
       onClick={async () => setState((await copyText(text)) ? 'ok' : 'fail')}
       aria-label={`Copy ${label}`}
     >

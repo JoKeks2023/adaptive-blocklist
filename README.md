@@ -19,8 +19,8 @@
 Universal Blocklist generates **DNS blocklists** for ads, trackers, telemetry and malware, rebuilt every day from public
 sources. Everything runs on GitHub (Actions for builds, Pages for hosting): no server, no database, nothing to pay for.
 
-> **New to DNS filtering?** Start with the **[beginner guide](docs/getting-started.md)**. It explains what a DNS filter is
-> and walks you through it, step by step. Problems? See **[Troubleshooting](docs/troubleshooting.md)**.
+> **New to DNS filtering?** Start with the **[beginner guide](https://github.com/JoKeks2023/adaptive-blocklist/wiki/Getting-Started)**. It explains what a DNS filter is
+> and walks you through it, step by step. Problems? See **[Troubleshooting](https://github.com/JoKeks2023/adaptive-blocklist/wiki/Troubleshooting)**.
 
 ## Quick start
 
