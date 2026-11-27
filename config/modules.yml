@@ -1,0 +1,52 @@
+# Modules are independent blocklists built from one or more sources.
+# Pending sources may be listed; they are documented but never downloaded.
+modules:
+  advertising:
+    name: Advertising
+    description: Ad servers, ad networks and pop-up/pop-under advertising domains.
+    sources: [stevenblack-unified, hagezi-popupads, pgl-yoyo-adservers]
+    min_domains: 100000
+    risk:
+      level: low
+      text: Rarely breaks sites. The StevenBlack unified list also contains adware/malware entries, so this module overlaps with Malware. Some free apps and sites that depend on ad networks may show errors.
+
+  tracking:
+    name: Tracking
+    description: Analytics and tracking domains (currently Adobe Analytics / Omniture hosts).
+    sources: [stevenblack-2o7net, frogeye-firstparty-trackers]
+    min_domains: 1000
+    risk:
+      level: medium
+      text: Blocking analytics can break login flows or "contact us" widgets on some sites. Coverage is currently narrow - broader tracker lists are pending license verification.
+
+  telemetry:
+    name: Telemetry
+    description: Built-in telemetry of operating systems and devices (Microsoft, Apple, Amazon, Samsung, LG webOS, Roku).
+    sources:
+      - hagezi-native-winoffice
+      - hagezi-native-apple
+      - hagezi-native-amazon
+      - hagezi-native-samsung
+      - hagezi-native-lgwebos
+      - hagezi-native-roku
+      - windowsspyblocker-spy
+    min_domains: 1000
+    risk:
+      level: high
+      text: "May block software updates, app stores, push notifications, cloud sync, smart-home/voice features and device activation. Test on one device first and keep the allowlist handy (overrides/allow.txt). Vendor-specific lists (Apple, Amazon, Samsung, LG, Roku) are the most likely to affect device functions."
+
+  malware:
+    name: Malware
+    description: Malware, phishing, scam and command-and-control domains from threat-intelligence feeds.
+    sources: [hagezi-tif-medium, urlhaus-hostfile, phishing-database-active]
+    min_domains: 150000
+    risk:
+      level: low
+      text: Low false-positive rate, but the list is large (hundreds of thousands of entries). Make sure your DNS filter has enough memory; the list can also contain shared hosting domains that block unrelated content.
+
+  custom:
+    name: Custom
+    description: Your own additions from overrides/deny.txt.
+    sources: []
+    include_deny: true
+    allow_empty: true

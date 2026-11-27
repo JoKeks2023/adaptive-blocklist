@@ -1,0 +1,4 @@
+||ads1.example.com^
+||ads2.example.com^
+||ads3.example.com^
+||ads4.example.com^
