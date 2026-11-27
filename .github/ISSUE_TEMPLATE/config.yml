@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Configurator & published lists
+    url: https://jokeks2023.github.io/adaptive-blocklist/
+    about: Build your configuration here first. The "Report a problem" button pre-fills the form below.

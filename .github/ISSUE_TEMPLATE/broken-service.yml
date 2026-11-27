@@ -1,0 +1,77 @@
+name: Something stopped working (false positive)
+description: A site, app or device broke after using these lists.
+title: "[Broken] "
+labels: ["false-positive"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! The more precise the blocked domain, the faster we can fix it.
+        Tip: the configurator's **Report a problem** button fills in the configuration for you.
+  - type: input
+    id: service
+    attributes:
+      label: Affected service / app / device
+      description: What stopped working?
+      placeholder: "e.g. Windows Update, Netflix on Samsung TV, Apple Maps"
+    validations:
+      required: true
+  - type: textarea
+    id: domains
+    attributes:
+      label: Blocked domain(s)
+      description: From your DNS filter's query log (Pi-hole "Query Log", AdGuard Home "Query Log"). One per line. If you don't know, say so.
+      placeholder: "telemetry.example.com"
+    validations:
+      required: false
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens?
+      description: Error message, what you expected, and whether it works when the filter is disabled.
+    validations:
+      required: true
+  - type: input
+    id: config
+    attributes:
+      label: Configuration link
+      description: The share link from the configurator (profile + enabled modules).
+      placeholder: "https://jokeks2023.github.io/adaptive-blocklist/?p=desktop&m=..."
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Build version
+      description: Shown in the configurator footer.
+      placeholder: "2026.11.27+4d71492"
+  - type: dropdown
+    id: filter
+    attributes:
+      label: DNS filter
+      options:
+        - Pi-hole
+        - AdGuard Home
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Which module do you suspect?
+      options:
+        - Not sure
+        - Advertising
+        - Tracking
+        - Telemetry
+        - Malware
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Checks
+      options:
+        - label: The problem goes away when the filter is disabled for this device.
+        - label: I removed private information (IP addresses, account names) from what I pasted.
+          required: true

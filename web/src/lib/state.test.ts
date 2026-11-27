@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mergeDomains, parseHostsList, renderCustomList } from './lists'
 import { defaultSelection, matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule } from './state'
-import { absoluteUrl, siteBase } from './urls'
+import { absoluteUrl, issueUrl, siteBase } from './urls'
 import type { Catalog } from './types'
 
 const mod = (id: string) => ({
@@ -72,5 +72,15 @@ describe('urls', () => {
   it('works with index.html and custom domains', () => {
     expect(absoluteUrl('data/catalog.json', siteBase('https://user.github.io/repo/index.html'))).toBe('https://user.github.io/repo/data/catalog.json')
     expect(absoluteUrl('data/catalog.json', siteBase('https://example.org/'))).toBe('https://example.org/data/catalog.json')
+  })
+})
+
+describe('issue links', () => {
+  it('prefills the configuration and rejects malformed repositories', () => {
+    const u = issueUrl('me/repo', 'broken-service.yml', { config: 'https://x/?p=a&m=b,c', build: '1+2' })!
+    expect(u.startsWith('https://github.com/me/repo/issues/new?template=broken-service.yml')).toBe(true)
+    expect(new URL(u).searchParams.get('config')).toBe('https://x/?p=a&m=b,c')
+    expect(issueUrl('evil/../x?y', 't.yml', {})).toBeNull()
+    expect(issueUrl(undefined, 't.yml', {})).toBeNull()
   })
 })

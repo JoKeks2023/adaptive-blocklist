@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CopyButton } from './components/CopyButton'
 import { ModuleRow } from './components/ModuleRow'
+import { SetupGuide } from './components/SetupGuide'
 import { formatBytes, formatCount, mergeDomains, parseHostsList, renderCustomList } from './lib/lists'
 import { downloadBlob, fetchCatalog, fetchHead, fetchText } from './lib/net'
 import { matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule } from './lib/state'
 import type { Catalog, Selection } from './lib/types'
-import { absoluteUrl, siteBase } from './lib/urls'
+import { absoluteUrl, issueUrl, siteBase } from './lib/urls'
 
 type Theme = 'system' | 'light' | 'dark'
 const PREVIEW_LINES = 80
@@ -95,6 +96,7 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
   const [busy, setBusy] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
+  const empty = selection.modules.length === 0
   const profile = catalog.profiles.find((p) => p.id === selection.profileId)!
   const matched = matchingProfile(selection, catalog)
   const modules = catalog.modules.filter((m) => !(m.include_deny && m.domains === 0))
@@ -137,6 +139,13 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
     return () => { cancelled = true }
   }, [previewOpen, matched, selection.modules, loadModules, base])
 
+  const highRisk = catalog.modules.filter((m) => m.risk?.level === 'high').map((m) => m.id)
+  const riskyOn = selection.modules.some((id) => highRisk.includes(id))
+  const guideUrls = empty
+    ? []
+    : matched
+      ? [{ label: matched.name, url: url(matched.file) }]
+      : selectedModules.map((m) => ({ label: m.name, url: url(m.file) }))
   const names = selectedModules.map((m) => m.name)
   const onDownload = async () => {
     setLoadError(null)
@@ -157,7 +166,9 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
     u.search = serializeSelection(selection, catalog)
     return u.toString()
   })()
-  const empty = selection.modules.length === 0
+  const repo = catalog.build.repository
+  const reportUrl = issueUrl(repo, 'broken-service.yml', { config: shareUrl, build: catalog.build.version })
+  const suggestUrl = issueUrl(repo, 'block-domain.yml', {})
   const built = new Date(catalog.build.time)
 
   return (
@@ -175,6 +186,19 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
         Pick a device profile, adjust the modules, and subscribe in Pi-hole or AdGuard Home. Lists are rebuilt daily from
         public sources.
       </p>
+
+      <details className="explain">
+        <summary>New here? What is this?</summary>
+        <p>
+          A <strong>DNS filter</strong> such as Pi-hole or AdGuard Home runs on a small computer in your network and
+          decides which internet addresses (domains) your devices may look up. A <strong>blocklist</strong> tells it which
+          domains belong to ads, trackers or malware, so those requests never leave your home.
+        </p>
+        <p>
+          Here you choose which kinds of domains to block, then paste one address into your DNS filter. You do not need to
+          download anything; the filter fetches and updates the list itself.
+        </p>
+      </details>
 
       <section aria-labelledby="h-profile">
         <h2 id="h-profile">Device profile</h2>
@@ -209,6 +233,14 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
             />
           ))}
         </ul>
+        {riskyOn && (
+          <p className="hint">
+            First DNS filter? Modules marked <em>high risk</em> can break updates or smart devices.{' '}
+            <button type="button" className="link inline" onClick={() => setSelection({ ...selection, modules: selection.modules.filter((id) => !highRisk.includes(id)) })}>
+              Switch them off to start safely
+            </button>
+          </p>
+        )}
       </section>
 
       <section aria-labelledby="h-result" className="result">
@@ -276,6 +308,35 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
           </div>
         )}
       </section>
+
+      <SetupGuide urls={guideUrls} isProfile={!!matched} docsUrl={repo ? `https://github.com/${repo}/blob/main/docs/getting-started.md` : null} />
+
+      {(reportUrl || suggestUrl) && (
+        <section aria-labelledby="h-help">
+          <h2 id="h-help">Help improve the lists</h2>
+          <ul className="group">
+            {reportUrl && (
+              <li className="row help-row">
+                <div>
+                  <div className="row-title">Something stopped working?</div>
+                  <p className="row-desc">Report a blocked service. Your current configuration is attached automatically.</p>
+                </div>
+                <a className="btn btn-secondary" href={reportUrl} target="_blank" rel="noreferrer noopener">Report a problem</a>
+              </li>
+            )}
+            {suggestUrl && (
+              <li className="row help-row">
+                <div>
+                  <div className="row-title">Found a domain that should be blocked?</div>
+                  <p className="row-desc">Submit ad, tracking, telemetry or malware domains for review.</p>
+                </div>
+                <a className="btn btn-secondary" href={suggestUrl} target="_blank" rel="noreferrer noopener">Suggest domains</a>
+              </li>
+            )}
+          </ul>
+          <p className="hint">Opens a GitHub issue form; a GitHub account is required.</p>
+        </section>
+      )}
 
       <footer className="foot">
         <p>

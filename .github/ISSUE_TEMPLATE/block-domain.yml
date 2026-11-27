@@ -1,0 +1,43 @@
+name: Suggest domains to block
+description: Submit ad, tracking, telemetry or malware domains that are missing.
+title: "[Domain] "
+labels: ["domain-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggestions are checked automatically (syntax, already listed?) and then reviewed by a maintainer.
+        Accepted domains go into the custom list or are reported upstream. Please do not submit personal data.
+  - type: textarea
+    id: domains
+    attributes:
+      label: Domains
+      description: One domain per line, no `http://`, no wildcards, no IP addresses.
+      placeholder: "ads.example.com\ntracker.example.net"
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Category
+      options:
+        - Advertising
+        - Tracking
+        - Telemetry
+        - Malware
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Where did you see it? Link to a threat report, DNS log excerpt or vendor documentation.
+    validations:
+      required: true
+  - type: checkboxes
+    id: risk
+    attributes:
+      label: Collateral damage
+      options:
+        - label: I checked that blocking this does not break a service people rely on (updates, login, payments).
+          required: true

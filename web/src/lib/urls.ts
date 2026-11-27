@@ -11,3 +11,10 @@ export function siteBase(href: string): URL {
 export function absoluteUrl(path: string, base: URL): string {
   return new URL(path, base).toString()
 }
+
+/** Prefilled GitHub issue-form URL (field ids match .github/ISSUE_TEMPLATE/*.yml). */
+export function issueUrl(repository: string | undefined, template: string, fields: Record<string, string>): string | null {
+  if (!repository || !/^[\w.-]+\/[\w.-]+$/.test(repository)) return null
+  const params = new URLSearchParams({ template, ...fields })
+  return `https://github.com/${repository}/issues/new?${params.toString()}`
+}

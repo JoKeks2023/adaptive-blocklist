@@ -96,6 +96,17 @@ def cmd_check_config(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_triage(args: argparse.Namespace) -> int:
+    from .triage import labels_for, published_lookup, render_comment, triage
+
+    site = os.environ.get("SITE_URL", "")
+    lookup = published_lookup(site) if site.startswith("https://") else (lambda _d: None)
+    result = triage(os.environ.get("ISSUE_BODY", ""), lookup)
+    Path(args.comment_file).write_text(render_comment(result), encoding="utf-8")
+    Path(args.labels_file).write_text("\n".join(labels_for(result)) + "\n", encoding="utf-8")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="universal-blocklist")
     parser.add_argument("--root", default=".", help="repository root (default: .)")
@@ -116,6 +127,11 @@ def main(argv: list[str] | None = None) -> int:
 
     c = sub.add_parser("check-config", help="validate config/*.yml and overrides/*.txt")
     c.set_defaults(func=cmd_check_config)
+
+    t = sub.add_parser("triage", help="validate domains from an issue body (env ISSUE_BODY, SITE_URL)")
+    t.add_argument("--comment-file", default="comment.md")
+    t.add_argument("--labels-file", default="labels.txt")
+    t.set_defaults(func=cmd_triage)
 
     args = parser.parse_args(argv)
     try:

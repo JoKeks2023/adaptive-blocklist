@@ -11,6 +11,7 @@ export interface BuildInfo {
   version: string
   status: string
   generator: string
+  repository?: string
 }
 
 export interface ModuleEntry {

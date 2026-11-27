@@ -1,0 +1,40 @@
+name: Triage domain requests
+
+# Validates submitted domains (syntax + already listed?) and comments on the issue.
+# Issue content is untrusted: it is only passed through environment variables,
+# parsed by Python and never interpolated into a shell command.
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  triage:
+    if: contains(github.event.issue.labels.*.name, 'domain-request')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Validate submitted domains
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: python -m blocklist triage --comment-file comment.md --labels-file labels.txt
+      - name: Comment and label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE" --body-file comment.md --edit-last --create-if-none
+          while read -r label; do
+            [ -n "$label" ] && gh issue edit "$ISSUE" --add-label "$label" || true
+          done < labels.txt

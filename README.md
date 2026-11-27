@@ -1,30 +1,86 @@
+<div align="center">
+
 # Universal Blocklist
 
-Configurable DNS blocklists for **Pi-hole**, **AdGuard Home** and compatible DNS filters.
-Pick a device profile in the web configurator, toggle modules, and subscribe to the generated lists.
+**Pick your devices. Pick what to block. Paste one link into Pi-hole or AdGuard Home.**
 
-Everything runs on GitHub: source in the repo, builds in GitHub Actions, hosting on GitHub Pages.
-No server, no database, no paid service.
+[![Build and deploy](https://github.com/JoKeks2023/adaptive-blocklist/actions/workflows/build.yml/badge.svg)](https://github.com/JoKeks2023/adaptive-blocklist/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
 
-- **Engine** (`blocklist/`, Python): downloads sources, parses, validates, dedupes, applies the allowlist, writes lists + metadata.
-- **Config** (`config/`, `overrides/`, YAML/TXT): sources, modules, profiles, allow/deny lists. Adding to these needs no code change.
-- **Web** (`web/`, React + Vite + TypeScript): configurator that reads the *published* `catalog.json` and module files.
+**[Open the configurator →](https://jokeks2023.github.io/adaptive-blocklist/)**
 
-## Published endpoints
+<img src="docs/screenshot.png" alt="Universal Blocklist configurator" width="420">
 
-Relative to your Pages site (`https://<user>.github.io/<repo>/`):
+</div>
 
-| Path | Content |
+Universal Blocklist generates **DNS blocklists** for ads, trackers, telemetry and malware, rebuilt every day from public
+sources. Everything runs on GitHub (Actions for builds, Pages for hosting): no server, no database, nothing to pay for.
+
+> **New to DNS filtering?** Start with the **[beginner guide](docs/getting-started.md)**. It explains what a DNS filter is
+> and walks you through it, step by step. Problems? See **[Troubleshooting](docs/troubleshooting.md)**.
+
+## Quick start
+
+1. Install [Pi-hole](https://docs.pi-hole.net/main/basic-install/) or [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome#getting-started) and point your devices (or router) at it.
+2. Open the **[configurator](https://jokeks2023.github.io/adaptive-blocklist/)**, choose a profile and switch modules on or off.
+   (First time? Switch off **Telemetry**, it is the module most likely to break things.)
+3. Copy the list address shown under **Your list**.
+4. **Pi-hole:** *Group Management → Adlists* (*Lists* in v6) → paste → *Add* → *Tools → Update Gravity*.
+   **AdGuard Home:** *Filters → DNS blocklists → Add blocklist → Add a custom list* → paste → save.
+5. Something broke? Press **Report a problem** in the configurator; we fix it for everybody.
+
+Ready-made addresses (replace nothing, they are permanent):
+
+| What | Address |
 |---|---|
-| `lists/modules/{advertising,tracking,telemetry,malware}.txt` | one list per module (permanent URLs) |
-| `lists/modules/custom.txt` | your `overrides/deny.txt` (empty by default) |
-| `lists/profiles/desktop.txt` | predefined profile (permanent URL) |
-| `data/catalog.json` | modules, profiles, sources (status, license), build info |
-| `data/stats.json` | totals and per-module / per-source statistics |
+| Desktop profile (all modules) | `https://jokeks2023.github.io/adaptive-blocklist/lists/profiles/desktop.txt` |
+| Advertising | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/advertising.txt` |
+| Tracking | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/tracking.txt` |
+| Telemetry (⚠ can break updates and devices) | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/telemetry.txt` |
+| Malware | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/malware.txt` |
 
-All paths are relative; the site works on project pages and custom domains.
+Custom combinations made in the configurator are assembled in your browser: you can download them as a TXT file or share the
+link, but they have **no permanent subscription address**. Subscribe to the module addresses instead.
+
+## Contents
+
+- [Modules and profiles](#modules-and-profiles)
+- [Helping out: reports and suggestions](#helping-out)
+- [For developers](#for-developers): [architecture](#architecture), [local setup](#local-setup), [sources](#add-a-source), [modules](#create-a-module), [profiles](#create-a-device-profile), [Pages setup](#configure-github-pages)
+- [Known limitations](#known-limitations)
+- [Licenses](#licenses)
+
+## Modules and profiles
+
+| Module | Blocks | Risk |
+|---|---|---|
+| Advertising | Ad servers, ad networks, pop-ups | Low |
+| Tracking | Analytics and tracking domains | Medium |
+| Telemetry | Built-in telemetry of Windows, Apple, Amazon, Samsung, LG, Roku | **High**: may block updates, app stores, voice assistants |
+| Malware | Malware, phishing, scams, command-and-control | Low |
+
+A **profile** is a ready-made set of modules for a kind of device. Today there is **Desktop** (all four modules). More profiles
+(Smart TV, IoT, Mobile, Gaming, …) only need a few lines of YAML, see [Create a device profile](#create-a-device-profile).
+Every source (origin, license, purpose, status) is listed in the configurator under *Sources & risks* and in `data/catalog.json`.
+
+## Helping out
+
+- **A site or device stopped working:** [report a problem](https://github.com/JoKeks2023/adaptive-blocklist/issues/new?template=broken-service.yml).
+  The configurator's button pre-fills your configuration and version.
+- **A domain should be blocked:** [suggest domains](https://github.com/JoKeks2023/adaptive-blocklist/issues/new?template=block-domain.yml).
+  A bot validates them and checks whether they are already listed; a maintainer reviews.
+- More in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+# For developers
 
 ## Architecture
+
+- **Engine** (`blocklist/`, Python): downloads sources, parses, validates, dedupes, applies the allowlist, writes lists and metadata.
+- **Config** (`config/*.yml`, `overrides/*.txt`): sources, modules, profiles, allow/deny lists. No code change needed to extend.
+- **Web** (`web/`, React + Vite + TypeScript): configurator reading the *published* `catalog.json` and module files.
+- **Automation** (`.github/workflows/`): `validate.yml` (tests), `build.yml` (daily build → validate → Pages deploy), `triage-issues.yml` (checks domain suggestions).
 
 ```
 config/*.yml ─┐
@@ -35,15 +91,17 @@ sources (https)┘   download→parse→       └─ data/{catalog,stats}.json
                    allowlist→compose
 ```
 
-Key rules of the engine:
+Published files (relative to the Pages site, so project pages and custom domains both work):
+`lists/modules/*.txt`, `lists/profiles/*.txt`, `data/catalog.json`, `data/stats.json`.
 
-- **Two input formats only**, declared per source: `hosts` (`0.0.0.0|127.0.0.1|::|::1 host [host...]`) and `domains` (one per line). Nothing is auto-detected; non-matching lines count as invalid, and a source with more than `max_invalid_ratio` (default 2 %) invalid lines fails with `invalid_format` (e.g. an HTML error page or adblock syntax).
-- **Normalisation:** lowercase, trailing dot removed, IDN → punycode; IPs, single labels, wildcards, URLs are rejected.
-- **Fail closed:** failed download (timeout, retries, 64 MB cap, https only), too few entries (`min_entries`), or a module below `min_domains` fails the whole build. Output is written to a temp dir, validated by an independent validator (sha256, sorting, duplicates, allowlist, profile = union of modules), and only then replaces `web/public/{lists,data}`.
-- **Deterministic:** sorted output, no timestamps in list bodies except the injected build time; same inputs → byte-identical files.
-- **Untrusted input:** downloaded content is only parsed as text, never executed.
-- **Output is exact-domain hosts format** (`0.0.0.0 domain`). Subdomains are not collapsed into parents.
-- **Allowlist** (`overrides/allow.txt`) removes the domain *and all subdomains* from every list.
+Engine rules:
+
+- **Two input formats only**, declared per source: `hosts` and `domains`. Nothing is auto-detected; non-matching lines count as invalid, and a source with more than `max_invalid_ratio` (default 2 %) invalid lines fails as `invalid_format` (e.g. an HTML error page).
+- **Normalisation:** lowercase, trailing dot removed, IDN → punycode; IPs, single labels, wildcards and URLs are rejected.
+- **Fail closed:** failed download (timeout, retries, 64 MB cap, https only), too few entries (`min_entries`) or a module below `min_domains` fails the build. Output is validated by an independent validator before it replaces anything; a failed build never reaches the deploy job, so the previous Pages version stays live.
+- **Deterministic:** sorted output; same inputs give byte-identical files.
+- **Untrusted input:** downloaded content (and issue text) is only parsed as data, never executed.
+- **Exact-domain hosts output** (`0.0.0.0 domain`); subdomains are not collapsed. The **allowlist** removes a domain *and its subdomains*.
 
 ## Local setup
 
@@ -55,15 +113,15 @@ python -m blocklist check-config       # validate config
 python -m blocklist build              # downloads sources, writes web/public/{lists,data}
 
 cd web && npm ci
-npm run dev                            # http://localhost:5173 (uses web/public/{lists,data})
+npm run dev                            # http://localhost:5173
 npm test && npm run build
 ```
 
-`web/public/lists` and `web/public/data` are git-ignored; they are generated.
+`web/public/lists` and `web/public/data` are generated and git-ignored.
 
 ## Add a source
 
-Append to `config/sources.yml` (see the header comment there for all fields):
+Append to `config/sources.yml` (all fields are documented in its header):
 
 ```yaml
 my-list:
@@ -77,9 +135,8 @@ my-list:
   min_entries: 1000
 ```
 
-Then add `my-list` to a module's `sources` in `config/modules.yml`. Only set sources active that you have checked
-(URL, format, license, maintenance). Otherwise add `status: pending` with a `pending_reason` – pending sources are
-documented in the catalog and the UI but never downloaded.
+Then add `my-list` to a module's `sources` in `config/modules.yml`. Only activate sources you have checked (URL, format,
+license, maintenance). Otherwise use `status: pending` with a `pending_reason`; pending sources are documented but never downloaded.
 
 ## Create a module
 
@@ -107,52 +164,26 @@ The builder, catalog and UI pick it up automatically; the profile gets `lists/pr
 
 ## Configure GitHub Pages
 
-1. Repository **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-2. **Settings → Actions → General → Workflow permissions**: read-only is sufficient (workflows request what they need).
-3. Run **Actions → Build and deploy → Run workflow** once. The site appears at `https://<user>.github.io/<repo>/`.
-4. Optional: protect `main` and require the **Validate** checks.
+1. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+2. Run **Actions → Build and deploy → Run workflow** once. The site appears at `https://<user>.github.io/<repo>/`.
+3. For the issue forms, create the labels `false-positive`, `domain-request`, `needs-info` and `already-listed`.
 
-Workflows: `validate.yml` (tests, config check, web tests/build; PRs and pushes), `build.yml` (daily at 03:17 UTC,
-manual, and on config/engine/web changes: tests → build → validate → deploy), `deploy.yml` (manual trigger that re-dispatches
-`build.yml`; deploys only ever happen after a validated build). Actions are pinned to commit SHAs (version in the comment);
-update them deliberately. A failed build never reaches the `deploy` job, so the previous Pages version stays live.
-
-## Use with Pi-hole
-
-Admin → **Adlists** → add the profile or module URL, e.g.
-`https://<user>.github.io/<repo>/lists/profiles/desktop.txt` → **Save**, then `pihole -g` (Tools → Update Gravity).
-Pi-hole matches entries exactly; it does not block subdomains of listed names unless they are listed too.
-
-## Use with AdGuard Home
-
-**Filters → DNS blocklists → Add blocklist → Add a custom list**, name it, paste the URL. The `malware` module has
-~260k entries; AdGuard Home needs enough RAM for large lists.
-
-## Web configurator behaviour
-
-- Predefined profiles and every module have **permanent, subscribable URLs**.
-- Any other combination of modules is **assembled in your browser** from the published module files. It can be downloaded as TXT and shared as a link (`?p=desktop&m=advertising,malware`), but **has no permanent subscription URL**. Subscribe to the module URLs instead.
-- Architecture note: custom combinations could later be published permanently via a validated GitHub-issue flow (an issue form → workflow validates module ids against `catalog.json` → adds a profile entry). The catalog schema and config-driven profiles already support this; it is not implemented.
-
-## Sources and licenses
-
-Source status, license and purpose are in `config/sources.yml` and at runtime in `data/catalog.json`.
-Active at launch: StevenBlack/hosts (MIT), HaGeZi dns-blocklists (GPL-3.0; popupads, native trackers, TIF medium).
-Pending (not downloaded): URLhaus (now needs an abuse.ch Auth-Key), Phishing.Database (size), Frogeye first-party
-trackers and Peter Lowe's list (license not confirmed), WindowsSpyBlocker (stale data).
+Workflows build daily (03:17 UTC), on demand, and on changes to config, engine or web. Actions are pinned to commit SHAs
+(version in the comment); update them deliberately.
 
 ## Known limitations
 
-- **Telemetry can break devices** (updates, app stores, push, voice assistants). Test first; use the allowlist.
-- **Tracking is thin** – only one active source until broader, clearly licensed tracker lists are verified.
+- **Telemetry can break devices** (updates, app stores, voice assistants). Test first; use your filter's allowlist.
+- **Tracking coverage is thin:** one active source until broader, clearly licensed tracker lists are verified.
 - The Advertising source (StevenBlack unified) also contains adware/malware entries, so modules overlap; profiles dedupe.
-- Exact-domain matching: no wildcard/subdomain semantics in the generated hosts lists.
-- Upstream data drifts; daily builds follow upstream, there is no snapshot pinning or diff review of upstream changes yet.
-- The `malware` list is large (~7 MB); the `desktop` profile ~10 MB.
-- The UI is English only.
+- Exact-domain matching only; no wildcard or subdomain semantics in the generated lists.
+- Upstream data changes daily; there is no snapshot pinning or diff review of upstream changes yet.
+- The `malware` list is large (~7 MB, ~270k entries); the `desktop` profile is ~10 MB.
+- Custom module combinations have no permanent URL. A validated "publish my profile via issue" flow is architecturally possible (config-driven profiles, schema-versioned catalog) but not implemented.
+- The interface and docs are English only.
 
-## License
+## Licenses
 
-Code: [MIT](LICENSE). **Generated lists** include data from upstream sources under their own licenses
-(HaGeZi: GPL-3.0; StevenBlack: MIT). Each list header names its sources and licenses; if you redistribute lists that
-include GPL-3.0 data, comply with GPL-3.0 for that data.
+Code: [MIT](LICENSE). **Generated lists** contain data from upstream sources under their own licenses (HaGeZi: GPL-3.0,
+StevenBlack: MIT). Each list header names its sources and licenses; if you redistribute lists that include GPL-3.0 data,
+comply with GPL-3.0 for that data.
