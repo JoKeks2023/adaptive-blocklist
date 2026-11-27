@@ -1,0 +1,19 @@
+title: "[Idea] "
+labels: []
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: A new device profile, a source worth checking, a configurator feature, ...
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What problem does it solve for you?
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: Suggesting a blocklist **source**? Please include its URL and license; unverified sources stay "pending".

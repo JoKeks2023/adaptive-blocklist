@@ -13,20 +13,20 @@ MAX_DOMAINS = 50
 MARKER = "<!-- ubl-triage -->"
 
 
-def extract_domains(body: str) -> list[str]:
-    """Return the raw lines of the '### Domains' section of an issue-form body."""
-    match = re.search(r"###\s+Domains\s*\n(.*?)(?:\n###\s|\Z)", body, re.S)
+def extract_domains(body: str, heading: str = "Domains") -> list[str]:
+    """Return the raw lines of one '### <heading>' section of an issue-form body."""
+    match = re.search(rf"###\s+{re.escape(heading)}\s*\n(.*?)(?:\n###\s|\Z)", body, re.S)
     if not match:
         return []
     lines = [ln.strip() for ln in match.group(1).splitlines()]
     return [ln for ln in lines if ln and ln != "_No response_"][:MAX_DOMAINS]
 
 
-def triage(body: str, listed: Callable[[str], str | None]) -> dict:
+def triage(body: str, listed: Callable[[str], str | None], heading: str = "Domains") -> dict:
     valid: list[str] = []
     invalid: list[str] = []
     already: dict[str, str] = {}
-    for raw in extract_domains(body):
+    for raw in extract_domains(body, heading):
         domain = normalize_domain(raw)
         if domain is None:
             invalid.append(raw[:80])

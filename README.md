@@ -6,6 +6,9 @@
 
 [![Build and deploy](https://github.com/JoKeks2023/adaptive-blocklist/actions/workflows/build.yml/badge.svg)](https://github.com/JoKeks2023/adaptive-blocklist/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/code-MIT-blue.svg)](LICENSE)
+[![Discussions](https://img.shields.io/github/discussions/JoKeks2023/adaptive-blocklist)](https://github.com/JoKeks2023/adaptive-blocklist/discussions)
+
+**English** · [Deutsch](README.de.md)
 
 **[Open the configurator →](https://jokeks2023.github.io/adaptive-blocklist/)**
 
@@ -69,7 +72,8 @@ Every source (origin, license, purpose, status) is listed in the configurator un
   The configurator's button pre-fills your configuration and version.
 - **A domain should be blocked:** [suggest domains](https://github.com/JoKeks2023/adaptive-blocklist/issues/new?template=block-domain.yml).
   A bot validates them and checks whether they are already listed; a maintainer reviews.
-- More in [CONTRIBUTING.md](CONTRIBUTING.md).
+- **Questions and ideas:** [Discussions](https://github.com/JoKeks2023/adaptive-blocklist/discussions). No question is too basic.
+- More in [CONTRIBUTING.md](CONTRIBUTING.md). Please read the [Code of Conduct](CODE_OF_CONDUCT.md); security problems go to [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -80,7 +84,7 @@ Every source (origin, license, purpose, status) is listed in the configurator un
 - **Engine** (`blocklist/`, Python): downloads sources, parses, validates, dedupes, applies the allowlist, writes lists and metadata.
 - **Config** (`config/*.yml`, `overrides/*.txt`): sources, modules, profiles, allow/deny lists. No code change needed to extend.
 - **Web** (`web/`, React + Vite + TypeScript): configurator reading the *published* `catalog.json` and module files.
-- **Automation** (`.github/workflows/`): `validate.yml` (tests), `build.yml` (daily build → validate → Pages deploy), `triage-issues.yml` (checks domain suggestions).
+- **Automation** (`.github/workflows/`): `validate.yml` (tests), `build.yml` (daily build → validate → Pages deploy), `triage-issues.yml` (checks domain suggestions), `apply-request.yml` (maintainer commands `/accept` and `/allow` on issues).
 
 ```
 config/*.yml ─┐
@@ -180,7 +184,8 @@ Workflows build daily (03:17 UTC), on demand, and on changes to config, engine o
 - Upstream data changes daily; there is no snapshot pinning or diff review of upstream changes yet.
 - The `malware` list is large (~7 MB, ~270k entries); the `desktop` profile is ~10 MB.
 - Custom module combinations have no permanent URL. A validated "publish my profile via issue" flow is architecturally possible (config-driven profiles, schema-versioned catalog) but not implemented.
-- The interface and docs are English only.
+- The web interface is English only; README and beginner guides also exist in German.
+- Pi-hole menu names in the guides follow the official docs (*Group Management → Domains*, `pihole allow`); the Adlists page is called *Lists* in newer v6 releases and was not verified against a running v6 instance.
 
 ## Licenses
 

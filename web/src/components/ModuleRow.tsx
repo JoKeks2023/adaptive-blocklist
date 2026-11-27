@@ -55,7 +55,7 @@ export function ModuleRow({ module, enabled, sources, url, onToggle }: Props) {
               <strong>{RISK_LABEL[module.risk.level]}.</strong> {module.risk.text}
             </p>
           )}
-          <h4>Sources</h4>
+          <h3>Sources</h3>
           <ul className="sources">
             {active.map((s) => (
               <li key={s.id}>

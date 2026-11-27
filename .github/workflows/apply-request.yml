@@ -1,0 +1,60 @@
+name: Apply maintainer command
+
+# Maintainers comment `/accept` on a "domain-request" issue (adds domains to
+# overrides/deny.txt) or `/allow` on a "false-positive" issue (adds the blocked
+# domains to overrides/allow.txt). Only users with write access can trigger it.
+# Issue text is untrusted: it is passed via env vars and only validated domains are written.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+concurrency:
+  group: apply-request
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: >-
+      github.event.issue.pull_request == null &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+      (startsWith(github.event.comment.body, '/accept') || startsWith(github.event.comment.body, '/allow'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Validate and apply
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_LABELS: ${{ toJSON(github.event.issue.labels.*.name) }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: python -m blocklist apply --comment-file comment.md --changed-file changed.txt
+      - name: Commit, rebuild, answer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number }}
+        run: |
+          if [ "$(cat changed.txt)" = "1" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add overrides/
+            git commit -m "chore: apply request from issue #${ISSUE}"
+            git pull --rebase origin "${{ github.event.repository.default_branch }}"
+            git push origin "HEAD:${{ github.event.repository.default_branch }}"
+            # pushes made with GITHUB_TOKEN do not trigger other workflows, so start the build explicitly
+            gh workflow run build.yml --ref "${{ github.event.repository.default_branch }}"
+            gh issue comment "$ISSUE" --body-file comment.md
+            gh issue close "$ISSUE" --reason completed
+          else
+            gh issue comment "$ISSUE" --body-file comment.md
+          fi

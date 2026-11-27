@@ -107,6 +107,30 @@ def cmd_triage(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_apply(args: argparse.Namespace) -> int:
+    from .apply import apply_request, parse_command
+    from .triage import published_lookup
+
+    command = parse_command(os.environ.get("COMMENT_BODY", ""))
+    if command is None:
+        print("not an apply command, nothing to do")
+        return 0
+    site = os.environ.get("SITE_URL", "")
+    lookup = published_lookup(site) if site.startswith("https://") else (lambda _d: None)
+    labels = json.loads(os.environ.get("ISSUE_LABELS", "[]"))
+    added, comment = apply_request(
+        command,
+        int(os.environ["ISSUE_NUMBER"]),
+        os.environ.get("ISSUE_BODY", ""),
+        labels,
+        Path(args.root) / "overrides",
+        lookup,
+    )
+    Path(args.comment_file).write_text(comment, encoding="utf-8")
+    Path(args.changed_file).write_text("1\n" if added else "0\n", encoding="utf-8")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="universal-blocklist")
     parser.add_argument("--root", default=".", help="repository root (default: .)")
@@ -132,6 +156,11 @@ def main(argv: list[str] | None = None) -> int:
     t.add_argument("--comment-file", default="comment.md")
     t.add_argument("--labels-file", default="labels.txt")
     t.set_defaults(func=cmd_triage)
+
+    a = sub.add_parser("apply", help="apply a maintainer command (/accept, /allow) from an issue comment")
+    a.add_argument("--comment-file", default="comment.md")
+    a.add_argument("--changed-file", default="changed.txt")
+    a.set_defaults(func=cmd_apply)
 
     args = parser.parse_args(argv)
     try:

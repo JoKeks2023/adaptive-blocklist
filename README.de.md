@@ -1,0 +1,66 @@
+<div align="center">
+
+# Universal Blocklist
+
+**Geräte wählen. Auswählen, was geblockt wird. Einen Link in Pi-hole oder AdGuard Home einfügen.**
+
+[English](README.md) · **Deutsch**
+
+**[Konfigurator öffnen →](https://jokeks2023.github.io/adaptive-blocklist/)**
+
+<img src="docs/screenshot.png" alt="Universal Blocklist Konfigurator" width="420">
+
+</div>
+
+Universal Blocklist erzeugt **DNS-Blocklisten** gegen Werbung, Tracker, Telemetrie und Schadsoftware, täglich neu aus öffentlichen Quellen.
+Alles läuft auf GitHub (Actions für den Build, Pages fürs Hosting): kein Server, keine Datenbank, keine Kosten.
+
+> **Neu bei DNS-Filtern?** Starte mit der **[Einsteiger-Anleitung](docs/de/getting-started.md)**. Sie erklärt Schritt für Schritt, was ein DNS-Filter ist
+> und wie du ihn einrichtest. Probleme? Siehe **[Fehlerhilfe](docs/de/troubleshooting.md)**.
+
+## Schnellstart
+
+1. Installiere [Pi-hole](https://docs.pi-hole.net/main/basic-install/) oder [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome#getting-started) und richte deine Geräte (oder den Router) darauf aus.
+2. Öffne den **[Konfigurator](https://jokeks2023.github.io/adaptive-blocklist/)**, wähle ein Profil und schalte Module ein oder aus.
+   (Zum ersten Mal? Schalte **Telemetry** aus: Dieses Modul macht am ehesten Probleme.)
+3. Kopiere die Listenadresse unter **Your list**.
+4. **Pi-hole:** *Group Management → Adlists* (in v6 evtl. *Lists*) → einfügen → *Add* → *Tools → Update Gravity*.
+   **AdGuard Home:** *Filters → DNS blocklists → Add blocklist → Add a custom list* → einfügen → speichern.
+5. Etwas funktioniert nicht mehr? Klicke im Konfigurator auf **Report a problem**, wir beheben es für alle.
+
+Fertige, dauerhafte Adressen:
+
+| Was | Adresse |
+|---|---|
+| Profil Desktop (alle Module) | `https://jokeks2023.github.io/adaptive-blocklist/lists/profiles/desktop.txt` |
+| Advertising (Werbung) | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/advertising.txt` |
+| Tracking | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/tracking.txt` |
+| Telemetry (⚠ kann Updates und Geräte stören) | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/telemetry.txt` |
+| Malware | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/malware.txt` |
+
+Eigene Kombinationen aus dem Konfigurator werden in deinem Browser zusammengesetzt: Du kannst sie als TXT herunterladen oder den Link teilen,
+sie haben aber **keine dauerhafte Abo-Adresse**. Abonniere stattdessen die einzelnen Modul-Adressen.
+
+## Module
+
+| Modul | Blockt | Risiko |
+|---|---|---|
+| Advertising | Werbeserver, Werbenetzwerke, Pop-ups | Niedrig |
+| Tracking | Analyse- und Tracking-Domains | Mittel |
+| Telemetry | Eingebaute Telemetrie von Windows, Apple, Amazon, Samsung, LG, Roku | **Hoch**: kann Updates, App-Stores, Sprachassistenten blockieren |
+| Malware | Schadsoftware, Phishing, Betrug, Command-and-Control | Niedrig |
+
+Ein **Profil** ist ein fertiges Set aus Modulen für eine Geräteart. Aktuell gibt es **Desktop** (alle vier Module).
+
+## Mithelfen
+
+- **Eine Seite oder ein Gerät funktioniert nicht mehr:** [Problem melden](https://github.com/JoKeks2023/adaptive-blocklist/issues/new?template=broken-service.yml).
+- **Eine Domain sollte geblockt werden:** [Domains vorschlagen](https://github.com/JoKeks2023/adaptive-blocklist/issues/new?template=block-domain.yml).
+- **Fragen und Ideen:** [Discussions](https://github.com/JoKeks2023/adaptive-blocklist/discussions). Keine Frage ist zu einfach.
+- Mehr in [CONTRIBUTING.md](CONTRIBUTING.md) (Englisch). Für Entwickler: Architektur, lokale Einrichtung, Quellen/Module/Profile hinzufügen und
+  bekannte Einschränkungen stehen im [englischen README](README.md#for-developers).
+
+## Lizenz
+
+Code: [MIT](LICENSE). Die **erzeugten Listen** enthalten Daten aus Upstream-Quellen unter deren eigenen Lizenzen
+(HaGeZi: GPL-3.0, StevenBlack: MIT). Jeder Listen-Header nennt Quellen und Lizenzen; wer Listen mit GPL-3.0-Daten weitergibt, muss die GPL-3.0 für diese Daten einhalten.

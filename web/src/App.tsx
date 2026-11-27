@@ -178,8 +178,8 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
           <p className="eyebrow">DNS blocklists</p>
           <h1>Universal Blocklist</h1>
         </div>
-        <button type="button" className="icon-btn" onClick={cycleTheme} aria-label={`Theme: ${theme}. Switch theme`}>
-          {theme === 'system' ? 'Auto' : theme === 'light' ? 'Light' : 'Dark'}
+        <button type="button" className="icon-btn" onClick={cycleTheme} aria-label={`Theme: ${theme === 'system' ? 'Auto' : theme === 'light' ? 'Light' : 'Dark'}. Activate to change`}>
+          Theme: {theme === 'system' ? 'Auto' : theme === 'light' ? 'Light' : 'Dark'}
         </button>
       </header>
       <p className="lead">

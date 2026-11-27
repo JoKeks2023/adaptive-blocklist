@@ -1,0 +1,29 @@
+title: "[Question] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        No question is too basic. Pi-hole and AdGuard Home setup questions are welcome here.
+        If a site or device **stopped working**, please use the "Report a problem" issue form instead so we can fix the list.
+  - type: textarea
+    id: question
+    attributes:
+      label: What would you like to know?
+    validations:
+      required: true
+  - type: dropdown
+    id: filter
+    attributes:
+      label: Which DNS filter do you use?
+      options:
+        - I don't have one yet
+        - Pi-hole
+        - AdGuard Home
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried so far?

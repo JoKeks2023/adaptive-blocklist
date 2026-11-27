@@ -1,10 +1,12 @@
 # Troubleshooting
 
+[Deutsch](de/troubleshooting.md)
+
 ## A website or app stopped working
 
 1. Open your DNS filter's **query log** and look for blocked entries from around the time of the problem.
 2. Allow the domain:
-   - **Pi-hole:** *Domains* (v6) / *Allowlist* → add the domain as an exact allow entry → save.
+   - **Pi-hole:** *Group Management → Domains* → add the domain as an exact allow entry, or run `pihole allow example.com` on the command line.
    - **AdGuard Home:** *Filters → Custom filtering rules* → add `@@||example.com^` (replace with the domain).
 3. Retry. If it works, please [report it](https://github.com/JoKeks2023/adaptive-blocklist/issues/new?template=broken-service.yml)
    so the list can be fixed upstream.

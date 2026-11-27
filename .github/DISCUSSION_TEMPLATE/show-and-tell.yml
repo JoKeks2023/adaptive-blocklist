@@ -1,0 +1,10 @@
+title: ""
+labels: []
+body:
+  - type: textarea
+    id: setup
+    attributes:
+      label: Share your setup
+      description: Hardware, DNS filter, which profile/modules you use, and what worked well. Please leave out private details like IP addresses.
+    validations:
+      required: true

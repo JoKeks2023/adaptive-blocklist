@@ -1,5 +1,14 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Ask a question (Q&A)
+    url: https://github.com/JoKeks2023/adaptive-blocklist/discussions/categories/q-a
+    about: Setting up Pi-hole or AdGuard Home? No question is too basic.
+  - name: Share an idea
+    url: https://github.com/JoKeks2023/adaptive-blocklist/discussions/categories/ideas
+    about: New device profiles, sources worth checking, configurator features.
+  - name: Report a security problem
+    url: https://github.com/JoKeks2023/adaptive-blocklist/security/advisories/new
+    about: Please report vulnerabilities privately, not as a public issue.
   - name: Configurator & published lists
     url: https://jokeks2023.github.io/adaptive-blocklist/
-    about: Build your configuration here first. The "Report a problem" button pre-fills the form below.
+    about: The "Report a problem" button there pre-fills the problem form with your configuration.

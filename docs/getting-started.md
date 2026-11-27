@@ -1,5 +1,7 @@
 # Getting started (no prior DNS knowledge needed)
 
+[Deutsche Version](de/getting-started.md)
+
 This guide takes you from "I have never run a DNS server" to "ads and trackers are blocked on my devices".
 It takes about 30 minutes. Nothing here can damage your devices: if something goes wrong, you switch the DNS
 setting back and everything is as before.
