@@ -25,7 +25,7 @@ sources. Everything runs on GitHub (Actions for builds, Pages for hosting): no s
 ## Quick start
 
 1. Install [Pi-hole](https://docs.pi-hole.net/main/basic-install/) or [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome#getting-started) and point your devices (or router) at it.
-2. Open the **[configurator](https://jokeks2023.github.io/adaptive-blocklist/)**, choose a profile and switch modules on or off.
+2. Open the **[configurator](https://jokeks2023.github.io/adaptive-blocklist/)**, choose your **device type** (Desktop, Smart TV, Smart Home, Mobile, Gaming, Universal), then switch **modules** and **vendors** on or off.
    (First time? Switch off **Telemetry**, it is the module most likely to break things.)
 3. Copy the list address shown under **Your list**.
 4. **Pi-hole:** *Group Management → Adlists* (*Lists* in v6) → paste → *Add* → *Tools → Update Gravity*.
@@ -36,7 +36,8 @@ Ready-made addresses (replace nothing, they are permanent):
 
 | What | Address |
 |---|---|
-| Desktop profile (all modules) | `https://jokeks2023.github.io/adaptive-blocklist/lists/profiles/desktop.txt` |
+| Device type, e.g. Desktop | `https://jokeks2023.github.io/adaptive-blocklist/lists/profiles/desktop.txt` (also `smart-tv`, `smart-home`, `mobile`, `gaming`, `universal`) |
+| Vendor, e.g. Samsung | `https://jokeks2023.github.io/adaptive-blocklist/lists/vendors/samsung.txt` (also `amazon`, `apple`, `microsoft`, `lg`, `roku`, `xiaomi`, `huawei`, `oppo-realme`, `vivo`, `tiktok`) |
 | Advertising | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/advertising.txt` |
 | Tracking | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/tracking.txt` |
 | Telemetry (⚠ can break updates and devices) | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/telemetry.txt` |
@@ -53,7 +54,7 @@ link, but they have **no permanent subscription address**. Subscribe to the modu
 - [Known limitations](#known-limitations)
 - [Licenses](#licenses)
 
-## Modules and profiles
+## Device types, modules and vendors
 
 | Module | Blocks | Risk |
 |---|---|---|
@@ -62,8 +63,12 @@ link, but they have **no permanent subscription address**. Subscribe to the modu
 | Telemetry | Built-in telemetry of Windows, Apple, Amazon, Samsung, LG, Roku | **High**: may block updates, app stores, voice assistants |
 | Malware | Malware, phishing, scams, command-and-control | Low |
 
-A **profile** is a ready-made set of modules for a kind of device. Today there is **Desktop** (all four modules). More profiles
-(Smart TV, IoT, Mobile, Gaming, …) only need a few lines of YAML, see [Create a device profile](#create-a-device-profile).
+A **device type** (profile) is a ready-made starting point: Desktop, Smart TV, Smart Home, Mobile, Gaming or Universal.
+A **vendor** list blocks the built-in telemetry of one manufacturer (Microsoft, Apple, Amazon, Samsung, LG, Roku, Xiaomi,
+Huawei, OPPO/Realme, Vivo, TikTok), so you only block what you own. You can change modules and vendors freely; a combination
+that matches a device type uses that type's permanent address, anything else is assembled in your browser.
+The *Telemetry* module already contains all vendor lists, so vendors it covers show as "included". More device types only need
+a few lines of YAML, see [Create a device profile](#create-a-device-profile).
 Every source (origin, license, purpose, status) is listed in the configurator under *Sources & risks* and in `data/catalog.json`.
 
 ## Helping out
@@ -96,7 +101,7 @@ sources (https)┘   download→parse→       └─ data/{catalog,stats}.json
 ```
 
 Published files (relative to the Pages site, so project pages and custom domains both work):
-`lists/modules/*.txt`, `lists/profiles/*.txt`, `data/catalog.json`, `data/stats.json`.
+`lists/modules/*.txt`, `lists/vendors/*.txt`, `lists/profiles/*.txt`, `data/catalog.json`, `data/stats.json`.
 
 Engine rules:
 
@@ -158,13 +163,28 @@ modules:
 
 ```yaml
 profiles:
-  iot:
-    name: IoT
-    description: Smart-home devices
-    modules: [advertising, malware]
+  kids-tablet:
+    name: Kids tablet
+    description: Tablets used by children
+    modules: [advertising, tracking, malware]
+    vendors: [apple, tiktok]       # optional
 ```
 
-The builder, catalog and UI pick it up automatically; the profile gets `lists/profiles/iot.txt`.
+The builder, catalog and UI pick it up automatically; the profile gets `lists/profiles/kids-tablet.txt`.
+
+## Add a vendor
+
+Vendors live in `config/vendors.yml` and are built like modules (one list per vendor, published as `lists/vendors/<id>.txt`):
+
+```yaml
+vendors:
+  sony:
+    name: Sony
+    description: Telemetry of Sony TVs and consoles.
+    sources: [my-sony-source]      # a verified entry from config/sources.yml
+    min_domains: 50
+    risk: { level: medium, text: May affect PlayStation network features. }
+```
 
 ## Configure GitHub Pages
 

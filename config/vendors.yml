@@ -1,0 +1,92 @@
+# Vendors: per-manufacturer / per-platform telemetry lists. Each vendor is built like a
+# module and published as lists/vendors/<id>.txt, so users can block exactly the vendors
+# they own. Profiles reference vendors via `vendors: [...]`.
+vendors:
+  microsoft:
+    name: Microsoft
+    description: Telemetry of Windows, Office and other Microsoft services.
+    sources: [hagezi-native-winoffice, windowsspyblocker-spy]
+    min_domains: 200
+    risk:
+      level: medium
+      text: Can block Windows/Office diagnostics and some update or licensing checks. Xbox and Microsoft account sign-in usually keep working, but test first.
+  apple:
+    name: Apple
+    description: Telemetry of iPhone, iPad, Mac and Apple TV.
+    sources: [hagezi-native-apple]
+    min_domains: 50
+    risk:
+      level: medium
+      text: May affect analytics, Siri suggestions and some App Store / iCloud features. Updates normally still work.
+  amazon:
+    name: Amazon
+    description: Telemetry of Fire TV, Echo and other Amazon devices and services.
+    sources: [hagezi-native-amazon]
+    min_domains: 100
+    risk:
+      level: high
+      text: May break Alexa voice features, Fire TV apps and Prime Video on some devices.
+  samsung:
+    name: Samsung
+    description: Telemetry of Samsung TVs, phones and appliances.
+    sources: [hagezi-native-samsung]
+    min_domains: 50
+    risk:
+      level: medium
+      text: May disable smart-TV hub recommendations, SmartThings features or firmware checks on some models.
+  lg:
+    name: LG (webOS)
+    description: Telemetry of LG webOS smart TVs.
+    sources: [hagezi-native-lgwebos]
+    min_domains: 100
+    risk:
+      level: medium
+      text: May remove TV home-screen content and recommendations; firmware updates can be affected on some models.
+  roku:
+    name: Roku
+    description: Telemetry of Roku streaming devices and TVs.
+    sources: [hagezi-native-roku]
+    min_domains: 20
+    risk:
+      level: medium
+      text: May affect channel recommendations and, on some devices, channel loading.
+  xiaomi:
+    name: Xiaomi
+    description: Telemetry of Xiaomi phones, TVs and smart-home devices.
+    sources: [hagezi-native-xiaomi]
+    min_domains: 100
+    risk:
+      level: high
+      text: May break Mi Home / smart-home control, MIUI cloud features and device activation.
+  huawei:
+    name: Huawei
+    description: Telemetry of Huawei devices and services.
+    sources: [hagezi-native-huawei]
+    min_domains: 40
+    risk:
+      level: medium
+      text: May affect Huawei cloud, AppGallery and push services.
+  oppo-realme:
+    name: OPPO & Realme
+    description: Telemetry of OPPO and Realme devices.
+    sources: [hagezi-native-oppo-realme]
+    min_domains: 150
+    risk:
+      level: medium
+      text: May affect push notifications, cloud sync and system app updates.
+  vivo:
+    name: Vivo
+    description: Telemetry of Vivo devices.
+    sources: [hagezi-native-vivo]
+    min_domains: 80
+    risk:
+      level: medium
+      text: May affect push notifications, cloud sync and system app updates.
+  tiktok:
+    name: TikTok (app)
+    description: Trackers of the TikTok app and SDKs embedded in other apps.
+    sources: [hagezi-native-tiktok]
+    min_domains: 150
+    risk:
+      level: low
+      text: The TikTok app itself may work with reduced features (e.g. ad-supported content, analytics).

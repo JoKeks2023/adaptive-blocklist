@@ -63,6 +63,7 @@ class Profile:
     name: str
     description: str
     modules: tuple[str, ...]
+    vendors: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,7 @@ class Config:
     sources: dict[str, Source]
     modules: dict[str, Module]
     profiles: dict[str, Profile]
+    vendors: dict[str, Module] = field(default_factory=dict)
     allow: frozenset[str] = field(default_factory=frozenset)
     deny: frozenset[str] = field(default_factory=frozenset)
 
@@ -144,10 +146,14 @@ def load_sources(path: Path) -> dict[str, Source]:
     return sources
 
 
-def load_modules(path: Path, sources: dict[str, Source]) -> dict[str, Module]:
+def load_modules(path: Path, sources: dict[str, Source], section: str = "modules", required: bool = True) -> dict[str, Module]:
     modules: dict[str, Module] = {}
-    for mid, raw in _section(_load_yaml(path), "modules", path).items():
-        where = f"{path}: module '{mid}'"
+    data = _load_yaml(path)
+    if not required and section not in data:
+        return modules
+    kind = section.rstrip("s")
+    for mid, raw in _section(data, section, path).items():
+        where = f"{path}: {kind} '{mid}'"
         _check_id(str(mid), where)
         if not isinstance(raw, dict):
             raise ConfigError(f"{where}: must be a mapping")
@@ -174,24 +180,32 @@ def load_modules(path: Path, sources: dict[str, Source]) -> dict[str, Module]:
     return modules
 
 
-def load_profiles(path: Path, modules: dict[str, Module]) -> dict[str, Profile]:
+def load_profiles(path: Path, modules: dict[str, Module], vendors: dict[str, Module] | None = None) -> dict[str, Profile]:
+    vendors = vendors or {}
     profiles: dict[str, Profile] = {}
     for pid, raw in _section(_load_yaml(path), "profiles", path).items():
         where = f"{path}: profile '{pid}'"
         _check_id(str(pid), where)
         if not isinstance(raw, dict):
             raise ConfigError(f"{where}: must be a mapping")
-        refs = _require(raw, "modules", list, where)
-        if not refs:
-            raise ConfigError(f"{where}: needs at least one module")
+        refs = raw.get("modules") or []
+        vrefs = raw.get("vendors") or []
+        if not isinstance(refs, list) or not isinstance(vrefs, list):
+            raise ConfigError(f"{where}: 'modules' and 'vendors' must be lists")
+        if not refs and not vrefs:
+            raise ConfigError(f"{where}: needs at least one module or vendor")
         for ref in refs:
             if ref not in modules:
                 raise ConfigError(f"{where}: unknown module {ref!r}")
+        for ref in vrefs:
+            if ref not in vendors:
+                raise ConfigError(f"{where}: unknown vendor {ref!r}")
         profiles[str(pid)] = Profile(
             id=str(pid),
             name=_require(raw, "name", str, where),
             description=_require(raw, "description", str, where).strip(),
             modules=tuple(dict.fromkeys(refs)),
+            vendors=tuple(dict.fromkeys(vrefs)),
         )
     return profiles
 
@@ -215,10 +229,15 @@ def load_override(path: Path) -> frozenset[str]:
 def load_config(root: Path) -> Config:
     sources = load_sources(root / "config" / "sources.yml")
     modules = load_modules(root / "config" / "modules.yml", sources)
-    profiles = load_profiles(root / "config" / "profiles.yml", modules)
+    vendors = load_modules(root / "config" / "vendors.yml", sources, section="vendors", required=False) if (root / "config" / "vendors.yml").exists() else {}
+    overlap = set(vendors) & set(modules)
+    if overlap:
+        raise ConfigError(f"ids used as both module and vendor: {sorted(overlap)}")
+    profiles = load_profiles(root / "config" / "profiles.yml", modules, vendors)
     return Config(
         sources=sources,
         modules=modules,
+        vendors=vendors,
         profiles=profiles,
         allow=load_override(root / "overrides" / "allow.txt"),
         deny=load_override(root / "overrides" / "deny.txt"),

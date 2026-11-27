@@ -21,7 +21,7 @@ Alles läuft auf GitHub (Actions für den Build, Pages fürs Hosting): kein Serv
 ## Schnellstart
 
 1. Installiere [Pi-hole](https://docs.pi-hole.net/main/basic-install/) oder [AdGuard Home](https://github.com/AdguardTeam/AdGuardHome#getting-started) und richte deine Geräte (oder den Router) darauf aus.
-2. Öffne den **[Konfigurator](https://jokeks2023.github.io/adaptive-blocklist/)**, wähle ein Profil und schalte Module ein oder aus.
+2. Öffne den **[Konfigurator](https://jokeks2023.github.io/adaptive-blocklist/)**, wähle deinen **Gerätetyp** (Desktop, Smart TV, Smart Home, Mobile, Gaming, Universal) und schalte **Module** und **Hersteller** ein oder aus.
    (Zum ersten Mal? Schalte **Telemetry** aus: Dieses Modul macht am ehesten Probleme.)
 3. Kopiere die Listenadresse unter **Your list**.
 4. **Pi-hole:** *Group Management → Adlists* (in v6 evtl. *Lists*) → einfügen → *Add* → *Tools → Update Gravity*.
@@ -32,7 +32,8 @@ Fertige, dauerhafte Adressen:
 
 | Was | Adresse |
 |---|---|
-| Profil Desktop (alle Module) | `https://jokeks2023.github.io/adaptive-blocklist/lists/profiles/desktop.txt` |
+| Gerätetyp, z. B. Desktop | `https://jokeks2023.github.io/adaptive-blocklist/lists/profiles/desktop.txt` (auch `smart-tv`, `smart-home`, `mobile`, `gaming`, `universal`) |
+| Hersteller, z. B. Samsung | `https://jokeks2023.github.io/adaptive-blocklist/lists/vendors/samsung.txt` (auch `amazon`, `apple`, `microsoft`, `lg`, `roku`, `xiaomi`, `huawei`, `oppo-realme`, `vivo`, `tiktok`) |
 | Advertising (Werbung) | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/advertising.txt` |
 | Tracking | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/tracking.txt` |
 | Telemetry (⚠ kann Updates und Geräte stören) | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/telemetry.txt` |
@@ -41,7 +42,7 @@ Fertige, dauerhafte Adressen:
 Eigene Kombinationen aus dem Konfigurator werden in deinem Browser zusammengesetzt: Du kannst sie als TXT herunterladen oder den Link teilen,
 sie haben aber **keine dauerhafte Abo-Adresse**. Abonniere stattdessen die einzelnen Modul-Adressen.
 
-## Module
+## Gerätetypen, Module und Hersteller
 
 | Modul | Blockt | Risiko |
 |---|---|---|
@@ -50,7 +51,10 @@ sie haben aber **keine dauerhafte Abo-Adresse**. Abonniere stattdessen die einze
 | Telemetry | Eingebaute Telemetrie von Windows, Apple, Amazon, Samsung, LG, Roku | **Hoch**: kann Updates, App-Stores, Sprachassistenten blockieren |
 | Malware | Schadsoftware, Phishing, Betrug, Command-and-Control | Niedrig |
 
-Ein **Profil** ist ein fertiges Set aus Modulen für eine Geräteart. Aktuell gibt es **Desktop** (alle vier Module).
+Ein **Gerätetyp** (Profil) ist ein fertiger Startpunkt: Desktop, Smart TV, Smart Home, Mobile, Gaming oder Universal.
+Eine **Hersteller**-Liste blockt die eingebaute Telemetrie eines Herstellers (Microsoft, Apple, Amazon, Samsung, LG, Roku, Xiaomi, Huawei, OPPO/Realme, Vivo, TikTok), damit du nur blockst, was du besitzt.
+Module und Hersteller sind frei kombinierbar. Passt die Kombination zu einem Gerätetyp, gilt dessen dauerhafte Adresse; alles andere wird im Browser zusammengesetzt.
+Das Modul *Telemetry* enthält bereits alle Hersteller-Listen.
 
 ## Mithelfen
 

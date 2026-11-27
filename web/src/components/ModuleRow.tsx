@@ -11,15 +11,19 @@ interface Props {
   sources: SourceEntry[]
   url: string
   onToggle: () => void
+  kind?: 'module' | 'vendor'
+  /** Name of the enabled module that already contains this list; the row is then shown as on and locked. */
+  coveredBy?: string
 }
 
-export function ModuleRow({ module, enabled, sources, url, onToggle }: Props) {
+export function ModuleRow({ module, enabled, sources, url, onToggle, kind = 'module', coveredBy }: Props) {
+  const on = enabled || !!coveredBy
   const [open, setOpen] = useState(false)
   const detailsId = `details-${module.id}`
   const active = sources.filter((s) => module.sources.includes(s.id))
   const pending = sources.filter((s) => module.pending_sources.includes(s.id))
   return (
-    <li className={`row ${enabled ? '' : 'row-off'}`}>
+    <li className={`row ${on ? '' : 'row-off'}`}>
       <div className="row-main">
         <div className="row-text">
           <div className="row-title">
@@ -27,6 +31,7 @@ export function ModuleRow({ module, enabled, sources, url, onToggle }: Props) {
             {module.risk && <span className={`badge badge-${module.risk.level}`}>{RISK_LABEL[module.risk.level]}</span>}
           </div>
           <p className="row-desc">{module.description}</p>
+          {coveredBy && <p className="row-note">Already included in the {coveredBy} module.</p>}
           <button
             type="button"
             className="link"
@@ -40,10 +45,11 @@ export function ModuleRow({ module, enabled, sources, url, onToggle }: Props) {
         <button
           type="button"
           role="switch"
-          aria-checked={enabled}
-          aria-label={`${module.name} module`}
+          aria-checked={on}
+          aria-disabled={coveredBy ? true : undefined}
+          aria-label={`${module.name} ${kind}${coveredBy ? ` (included in ${coveredBy})` : ''}`}
           className="switch"
-          onClick={onToggle}
+          onClick={coveredBy ? undefined : onToggle}
         >
           <span className="switch-thumb" />
         </button>

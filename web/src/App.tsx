@@ -4,8 +4,8 @@ import { ModuleRow } from './components/ModuleRow'
 import { SetupGuide } from './components/SetupGuide'
 import { formatBytes, formatCount, mergeDomains, parseHostsList, renderCustomList } from './lib/lists'
 import { downloadBlob, fetchCatalog, fetchHead, fetchText } from './lib/net'
-import { matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule } from './lib/state'
-import type { Catalog, Selection } from './lib/types'
+import { coveredVendors, effectiveItems, matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule, toggleVendor, vendorsOf } from './lib/state'
+import type { Catalog, ModuleEntry, Selection } from './lib/types'
 import { absoluteUrl, issueUrl, siteBase } from './lib/urls'
 
 type Theme = 'system' | 'light' | 'dark'
@@ -96,26 +96,28 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
   const [busy, setBusy] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const empty = selection.modules.length === 0
+  const items = effectiveItems(selection, catalog)
+  const itemsKey = items.map((i) => i.file).join()
+  const covered = coveredVendors(selection, catalog)
+  const vendors = vendorsOf(catalog)
+  const empty = items.length === 0
   const profile = catalog.profiles.find((p) => p.id === selection.profileId)!
   const matched = matchingProfile(selection, catalog)
   const modules = catalog.modules.filter((m) => !(m.include_deny && m.domains === 0))
-  const selectedModules = catalog.modules.filter((m) => selection.modules.includes(m.id))
-  const sumDomains = selectedModules.reduce((n, m) => n + m.domains, 0)
+  const sumDomains = items.reduce((n, m) => n + m.domains, 0)
   const url = useCallback((path: string) => absoluteUrl(path, base), [base])
 
-  const loadModules = useCallback(async (ids: string[]): Promise<string[][]> => {
+  const loadItems = useCallback(async (list: ModuleEntry[]): Promise<string[][]> => {
     return Promise.all(
-      ids.map(async (id) => {
-        const hit = cache.current.get(id)
+      list.map(async (m) => {
+        const hit = cache.current.get(m.file)
         if (hit) return hit
-        const m = catalog.modules.find((x) => x.id === id)!
         const domains = parseHostsList(await fetchText(absoluteUrl(m.file, base)))
-        cache.current.set(id, domains)
+        cache.current.set(m.file, domains)
         return domains
       }),
     )
-  }, [catalog, base])
+  }, [base])
 
   // Preview: published profile -> stream only the head of the file; custom -> compose from module lists.
   useEffect(() => {
@@ -129,7 +131,7 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
           const head = await fetchHead(absoluteUrl(matched.file, base), 64 * 1024)
           if (!cancelled) setPreview({ lines: parseHostsList(head).slice(0, PREVIEW_LINES), total: matched.domains })
         } else {
-          const merged = mergeDomains(await loadModules(selection.modules))
+          const merged = mergeDomains(await loadItems(items))
           if (!cancelled) setPreview({ lines: merged.slice(0, PREVIEW_LINES), total: merged.length })
         }
       } catch (e) {
@@ -137,22 +139,29 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
       }
     })()
     return () => { cancelled = true }
-  }, [previewOpen, matched, selection.modules, loadModules, base])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewOpen, matched, itemsKey, loadItems, base])
 
-  const highRisk = catalog.modules.filter((m) => m.risk?.level === 'high').map((m) => m.id)
-  const riskyOn = selection.modules.some((id) => highRisk.includes(id))
+  const isHigh = (m: ModuleEntry) => m.risk?.level === 'high'
+  const riskyOn = items.some(isHigh)
+  const switchOffRisky = () =>
+    setSelection({
+      ...selection,
+      modules: selection.modules.filter((id) => !isHigh(catalog.modules.find((m) => m.id === id)!)),
+      vendors: selection.vendors.filter((id) => !isHigh(vendors.find((v) => v.id === id)!)),
+    })
   const guideUrls = empty
     ? []
     : matched
       ? [{ label: matched.name, url: url(matched.file) }]
-      : selectedModules.map((m) => ({ label: m.name, url: url(m.file) }))
-  const names = selectedModules.map((m) => m.name)
+      : items.map((m) => ({ label: m.name, url: url(m.file) }))
+  const names = items.map((m) => m.name)
   const onDownload = async () => {
     setLoadError(null)
     if (matched) return // handled by the plain link below
     setBusy(true)
     try {
-      const merged = mergeDomains(await loadModules(selection.modules))
+      const merged = mergeDomains(await loadItems(items))
       downloadBlob('universal-blocklist-custom.txt', renderCustomList(merged, names, catalog.build.time, catalog.build.commit.slice(0, 7)))
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e))
@@ -183,7 +192,7 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
         </button>
       </header>
       <p className="lead">
-        Pick a device profile, adjust the modules, and subscribe in Pi-hole or AdGuard Home. Lists are rebuilt daily from
+        Pick your device type, adjust modules and vendors, and subscribe in Pi-hole or AdGuard Home. Lists are rebuilt daily from
         public sources.
       </p>
 
@@ -201,8 +210,8 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
       </details>
 
       <section aria-labelledby="h-profile">
-        <h2 id="h-profile">Device profile</h2>
-        <div className="segmented" role="radiogroup" aria-label="Device profile">
+        <h2 id="h-profile">Device type</h2>
+        <div className="segmented" role="radiogroup" aria-label="Device type">
           {catalog.profiles.map((p) => (
             <button
               key={p.id}
@@ -235,13 +244,34 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
         </ul>
         {riskyOn && (
           <p className="hint">
-            First DNS filter? Modules marked <em>high risk</em> can break updates or smart devices.{' '}
-            <button type="button" className="link inline" onClick={() => setSelection({ ...selection, modules: selection.modules.filter((id) => !highRisk.includes(id)) })}>
+            First DNS filter? Entries marked <em>high risk</em> can break updates or smart devices.{' '}
+            <button type="button" className="link inline" onClick={switchOffRisky}>
               Switch them off to start safely
             </button>
           </p>
         )}
       </section>
+
+      {vendors.length > 0 && (
+        <section aria-labelledby="h-vendors">
+          <h2 id="h-vendors">Vendors</h2>
+          <p className="hint hint-top">Block the built-in telemetry of the brands you own. Each vendor has its own list.</p>
+          <ul className="group">
+            {vendors.map((v) => (
+              <ModuleRow
+                key={v.id}
+                kind="vendor"
+                module={v}
+                enabled={selection.vendors.includes(v.id)}
+                coveredBy={covered.get(v.id)}
+                sources={catalog.sources}
+                url={url(v.file)}
+                onToggle={() => setSelection(toggleVendor(selection, v.id, catalog))}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section aria-labelledby="h-result" className="result">
         <h2 id="h-result">Your list</h2>
@@ -268,7 +298,7 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
               the TXT, or subscribe to the individual module URLs instead:
             </p>
             <ul className="mini-urls">
-              {selectedModules.map((m) => (
+              {items.map((m) => (
                 <li key={m.id} className="url-line">
                   <span className="mini-name">{m.name}</span>
                   <code title={url(m.file)}>{url(m.file)}</code>

@@ -1,4 +1,6 @@
-# Profiles combine modules. Add a profile here - no code changes required.
+# Profiles = device types. Each combines content modules and (optionally) vendors.
+# Add a profile here - no code changes required. Users can still change the selection
+# in the configurator; the profile is only the starting point.
 profiles:
   desktop:
     name: Desktop
@@ -8,3 +10,30 @@ profiles:
       - tracking
       - telemetry
       - malware
+
+  smart-tv:
+    name: Smart TV
+    description: Smart TVs and streaming boxes. Blocks ads, trackers and the TV vendors' built-in telemetry.
+    modules: [advertising, tracking, malware]
+    vendors: [samsung, lg, roku, amazon]
+
+  smart-home:
+    name: Smart Home
+    description: Smart-home and IoT devices. Conservative defaults so devices keep working; add vendors you own.
+    modules: [tracking, malware]
+    vendors: [amazon, xiaomi]
+
+  mobile:
+    name: Mobile
+    description: Phones and tablets. Add the vendor of your device to block its built-in telemetry.
+    modules: [advertising, tracking, malware]
+
+  gaming:
+    name: Gaming
+    description: Consoles and gaming PCs. Light protection that avoids breaking online play and stores.
+    modules: [tracking, malware]
+
+  universal:
+    name: Universal
+    description: A safe baseline for any device - no telemetry blocking.
+    modules: [advertising, tracking, malware]

@@ -50,7 +50,7 @@ h3 { margin: 14px 0 6px; font-size: 13px; color: var(--text-2); font-weight: 600
 .icon-btn:active { transform: scale(0.96); }
 
 /* Segmented control */
-.segmented { display: flex; gap: 2px; padding: 2px; background: rgba(120, 120, 128, 0.16); border-radius: 10px; overflow-x: auto; }
+.segmented { display: grid; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 2px; padding: 2px; background: rgba(120, 120, 128, 0.16); border-radius: 10px; }
 .seg { flex: 1; min-height: 44px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: 500 15px var(--font); cursor: pointer; white-space: nowrap; transition: background 0.25s var(--ease), box-shadow 0.25s var(--ease); }
 .seg-on { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 0 0 0.5px rgba(0, 0, 0, 0.04); font-weight: 600; }
 
@@ -87,6 +87,9 @@ h3 { margin: 14px 0 6px; font-size: 13px; color: var(--text-2); font-weight: 600
 .callout-medium { background: var(--orange-bg); }
 .callout-high { background: var(--red-bg); }
 
+.row-note { margin: 0 0 4px; font-size: 13px; color: var(--text-2); font-style: italic; }
+.hint-top { margin: -4px 4px 10px; }
+.switch[aria-disabled='true'] { cursor: default; opacity: 0.7; }
 .help-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .help-row .row-desc { margin-bottom: 0; }
 .help-row .btn { flex: none; }

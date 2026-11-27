@@ -108,6 +108,61 @@ sources:
     verified: "2026-11-26"
     min_entries: 20
 
+  hagezi-native-xiaomi:
+    name: HaGeZi Native Tracker - Xiaomi
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.xiaomi-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Telemetry built into Xiaomi phones, TVs and smart-home devices.
+    verified: "2026-11-27"
+    min_entries: 100
+
+  hagezi-native-huawei:
+    name: HaGeZi Native Tracker - Huawei
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.huawei-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Telemetry built into Huawei devices and services.
+    verified: "2026-11-27"
+    min_entries: 40
+
+  hagezi-native-oppo-realme:
+    name: HaGeZi Native Tracker - OPPO & Realme
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.oppo-realme-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Telemetry built into OPPO and Realme devices.
+    verified: "2026-11-27"
+    min_entries: 150
+
+  hagezi-native-vivo:
+    name: HaGeZi Native Tracker - Vivo
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.vivo-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Telemetry built into Vivo devices.
+    verified: "2026-11-27"
+    min_entries: 80
+
+  hagezi-native-tiktok:
+    name: HaGeZi Native Tracker - TikTok
+    url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/native.tiktok-onlydomains.txt
+    homepage: https://github.com/hagezi/dns-blocklists
+    format: domains
+    license: GPL-3.0
+    license_url: https://github.com/hagezi/dns-blocklists/blob/main/LICENSE
+    purpose: Trackers of the TikTok app and its SDKs.
+    verified: "2026-11-27"
+    min_entries: 150
+
   hagezi-tif-medium:
     name: HaGeZi Threat Intelligence Feeds (medium)
     url: https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/tif.medium-onlydomains.txt

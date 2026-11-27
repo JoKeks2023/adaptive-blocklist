@@ -156,61 +156,66 @@ def build_all(config: Config, fetcher: Fetcher, meta: BuildMeta) -> BuildOutput:
     files: dict[str, str] = {}
 
     # 1. Fetch every referenced source once.
-    needed = dict.fromkeys(sid for m in config.modules.values() for sid in m.sources)
+    units = {**config.modules, **config.vendors}
+    needed = dict.fromkeys(sid for m in units.values() for sid in m.sources)
     results = {sid: fetch_source(config.sources[sid], fetcher) for sid in needed}
 
-    # 2. Modules
+    # 2. Modules (content categories) and vendors (per-manufacturer lists) are built identically.
+    def build_unit(unit: Module, kind: str) -> tuple[set[str], dict]:
+        domains, unit_problems = build_module(unit, results, config)
+        problems.extend(p.replace("module '", f"{kind} '", 1) for p in unit_problems)
+        active = [config.sources[s] for s in unit.sources if results[s].status != PENDING]
+        text = render_list(
+            f"Universal Blocklist - {unit.name}",
+            unit.description,
+            sorted(domains),
+            meta,
+            active,
+            note=unit.risk.text if unit.risk else "",
+        )
+        path = f"lists/{kind}s/{unit.id}.txt"
+        files[path] = text
+        entry = {
+            "id": unit.id,
+            "name": unit.name,
+            "description": unit.description,
+            "risk": {"level": unit.risk.level, "text": unit.risk.text} if unit.risk else None,
+            "domains": len(domains),
+            "file": path,
+            "sha256": _sha256(text),
+            "bytes": len(text.encode("utf-8")),
+            "sources": [s for s in unit.sources if results[s].status != PENDING],
+            "pending_sources": [s for s in unit.sources if results[s].status == PENDING],
+            "include_deny": unit.include_deny,
+        }
+        return domains, entry
+
     module_domains: dict[str, set[str]] = {}
     module_entries = []
     for module in config.modules.values():
-        domains, module_problems = build_module(module, results, config)
-        problems += module_problems
-        module_domains[module.id] = domains
-        active_sources = [config.sources[s] for s in module.sources if results[s].status != PENDING]
-        text = render_list(
-            f"Universal Blocklist - {module.name}",
-            module.description,
-            sorted(domains),
-            meta,
-            active_sources,
-            note=module.risk.text if module.risk else "",
-        )
-        path = f"lists/modules/{module.id}.txt"
-        files[path] = text
-        module_entries.append(
-            {
-                "id": module.id,
-                "name": module.name,
-                "description": module.description,
-                "risk": {"level": module.risk.level, "text": module.risk.text} if module.risk else None,
-                "domains": len(domains),
-                "file": path,
-                "sha256": _sha256(text),
-                "bytes": len(text.encode("utf-8")),
-                "sources": [s for s in module.sources if results[s].status != PENDING],
-                "pending_sources": [s for s in module.sources if results[s].status == PENDING],
-                "include_deny": module.include_deny,
-            }
-        )
+        module_domains[module.id], entry = build_unit(module, "module")
+        module_entries.append(entry)
+    vendor_domains: dict[str, set[str]] = {}
+    vendor_entries = []
+    for vendor in config.vendors.values():
+        vendor_domains[vendor.id], entry = build_unit(vendor, "vendor")
+        vendor_entries.append(entry)
 
-    # 3. Profiles (union of modules)
+    # 3. Profiles (union of their modules and vendors)
     profile_entries = []
     for profile in config.profiles.values():
-        domains = set().union(*(module_domains[m] for m in profile.modules))
-        used = []
-        for m in profile.modules:
-            for s in config.modules[m].sources:
+        domains = set().union(
+            *(module_domains[m] for m in profile.modules), *(vendor_domains[v] for v in profile.vendors)
+        )
+        used: list[Source] = []
+        members = [config.modules[m] for m in profile.modules] + [config.vendors[v] for v in profile.vendors]
+        for member in members:
+            for s in member.sources:
                 if results[s].status != PENDING and config.sources[s] not in used:
                     used.append(config.sources[s])
-        risks = [config.modules[m].risk.text for m in profile.modules if config.modules[m].risk]
-        text = render_list(
-            f"Universal Blocklist - Profile {profile.name}",
-            profile.description,
-            sorted(domains),
-            meta,
-            used,
-            note=f"Modules: {', '.join(profile.modules)}",
-        )
+        risks = [m.risk.text for m in members if m.risk]
+        note = f"Modules: {', '.join(profile.modules) or '-'}; vendors: {', '.join(profile.vendors) or '-'}"
+        text = render_list(f"Universal Blocklist - Profile {profile.name}", profile.description, sorted(domains), meta, used, note=note)
         path = f"lists/profiles/{profile.id}.txt"
         files[path] = text
         profile_entries.append(
@@ -219,6 +224,7 @@ def build_all(config: Config, fetcher: Fetcher, meta: BuildMeta) -> BuildOutput:
                 "name": profile.name,
                 "description": profile.description,
                 "modules": list(profile.modules),
+                "vendors": list(profile.vendors),
                 "domains": len(domains),
                 "file": path,
                 "sha256": _sha256(text),
@@ -248,6 +254,7 @@ def build_all(config: Config, fetcher: Fetcher, meta: BuildMeta) -> BuildOutput:
                 "invalid_entries": result.invalid if result else 0,
                 "error": (result.error if result else source.pending_reason) or None,
                 "modules": [m.id for m in config.modules.values() if sid in m.sources],
+                "vendors": [v.id for v in config.vendors.values() if sid in v.sources],
             }
         )
     build = {
@@ -262,6 +269,7 @@ def build_all(config: Config, fetcher: Fetcher, meta: BuildMeta) -> BuildOutput:
         "schema_version": SCHEMA_VERSION,
         "build": build,
         "modules": module_entries,
+        "vendors": vendor_entries,
         "profiles": profile_entries,
         "sources": source_entries,
     }
@@ -271,14 +279,16 @@ def build_all(config: Config, fetcher: Fetcher, meta: BuildMeta) -> BuildOutput:
         "build": build,
         "totals": {
             "modules": len(module_entries),
+            "vendors": len(vendor_entries),
             "profiles": len(profile_entries),
             "sources_configured": len(source_entries),
             "sources_ok": active_count,
             "sources_pending": sum(1 for e in source_entries if e["status"] == PENDING),
             "sources_failed": sum(1 for e in source_entries if e["status"] not in (OK, PENDING, "unused")),
-            "unique_domains_all_modules": len(set().union(*module_domains.values())),
+            "unique_domains_all_modules": len(set().union(*module_domains.values(), *vendor_domains.values())),
         },
         "modules": {e["id"]: {"domains": e["domains"], "bytes": e["bytes"]} for e in module_entries},
+        "vendors": {e["id"]: {"domains": e["domains"], "bytes": e["bytes"]} for e in vendor_entries},
         "profiles": {e["id"]: {"domains": e["domains"], "bytes": e["bytes"]} for e in profile_entries},
         "sources": {
             e["id"]: {"status": e["status"], "domains": e["domains"], "invalid_entries": e["invalid_entries"], "error": e["error"]}

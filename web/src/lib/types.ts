@@ -32,6 +32,7 @@ export interface ProfileEntry {
   name: string
   description: string
   modules: string[]
+  vendors?: string[]
   domains: number
   file: string
   bytes: number
@@ -54,12 +55,14 @@ export interface Catalog {
   schema_version: number
   build: BuildInfo
   modules: ModuleEntry[]
+  vendors?: ModuleEntry[]
   profiles: ProfileEntry[]
   sources: SourceEntry[]
 }
 
-/** Module ids currently enabled, plus the profile they started from. */
+/** Modules and vendors currently enabled, plus the profile (device type) they started from. */
 export interface Selection {
   profileId: string
   modules: string[]
+  vendors: string[]
 }

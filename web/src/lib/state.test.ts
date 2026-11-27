@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mergeDomains, parseHostsList, renderCustomList } from './lists'
-import { defaultSelection, matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule } from './state'
+import { coveredVendors, defaultSelection, effectiveItems, matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule, toggleVendor } from './state'
 import { absoluteUrl, issueUrl, siteBase } from './urls'
 import type { Catalog } from './types'
 
@@ -8,13 +8,16 @@ const mod = (id: string) => ({
   id, name: id, description: '', risk: null, domains: 1, file: `lists/modules/${id}.txt`,
   bytes: 1, sources: [], pending_sources: [], include_deny: false,
 })
+const vend = (id: string, sources: string[]) => ({ ...mod(id), file: `lists/vendors/${id}.txt`, sources })
 const catalog: Catalog = {
   schema_version: 1,
   build: { time: 't', commit: 'c', version: 'v', status: 'ok', generator: 'g' },
-  modules: ['advertising', 'tracking', 'telemetry', 'malware'].map(mod),
+  modules: [...['advertising', 'tracking', 'malware'].map(mod), { ...mod('telemetry'), sources: ['s-acme', 's-globex'] }],
+  vendors: [vend('acme', ['s-acme']), vend('globex', ['s-globex']), vend('initech', ['s-initech'])],
   profiles: [
     { id: 'desktop', name: 'Desktop', description: '', modules: ['advertising', 'tracking', 'telemetry', 'malware'], domains: 4, file: 'lists/profiles/desktop.txt', bytes: 1 },
     { id: 'lite', name: 'Lite', description: '', modules: ['advertising', 'malware'], domains: 2, file: 'lists/profiles/lite.txt', bytes: 1 },
+    { id: 'tv', name: 'TV', description: '', modules: ['malware'], vendors: ['acme', 'globex'], domains: 2, file: 'lists/profiles/tv.txt', bytes: 1 },
   ],
   sources: [],
 }
@@ -44,11 +47,11 @@ describe('share links', () => {
 
 describe('profile matching', () => {
   it('detects a published profile regardless of the profile it started from', () => {
-    const sel = { profileId: 'desktop', modules: ['advertising', 'malware'] }
+    const sel = { profileId: 'desktop', modules: ['advertising', 'malware'], vendors: [] }
     expect(matchingProfile(sel, catalog)?.id).toBe('lite')
   })
   it('returns null for custom combinations (no permanent URL)', () => {
-    expect(matchingProfile({ profileId: 'desktop', modules: ['tracking'] }, catalog)).toBeNull()
+    expect(matchingProfile({ profileId: 'desktop', modules: ['tracking'], vendors: [] }, catalog)).toBeNull()
   })
 })
 
@@ -82,5 +85,31 @@ describe('issue links', () => {
     expect(new URL(u).searchParams.get('config')).toBe('https://x/?p=a&m=b,c')
     expect(issueUrl('evil/../x?y', 't.yml', {})).toBeNull()
     expect(issueUrl(undefined, 't.yml', {})).toBeNull()
+  })
+})
+
+describe('vendors', () => {
+  it('profiles preselect vendors and share links carry only differences', () => {
+    const tv = selectProfile('tv', catalog)
+    expect(tv.vendors).toEqual(['acme', 'globex'])
+    expect(serializeSelection(tv, catalog)).toBe('p=tv')
+    const custom = toggleVendor(tv, 'globex', catalog)
+    expect(serializeSelection(custom, catalog)).toBe('p=tv&v=acme')
+    expect(parseShareParams('?p=tv&v=acme', catalog)).toEqual(custom)
+    expect(parseShareParams('?p=tv&v=', catalog).vendors).toEqual([])
+    expect(parseShareParams('?p=tv&v=acme,nope', catalog).vendors).toEqual(['acme'])
+  })
+  it('matches a profile only when vendors match as well', () => {
+    expect(matchingProfile(selectProfile('tv', catalog), catalog)?.id).toBe('tv')
+    expect(matchingProfile(toggleVendor(selectProfile('tv', catalog), 'initech', catalog), catalog)).toBeNull()
+  })
+  it('a module that contains a vendor list covers it (no double fetch)', () => {
+    const sel = { profileId: 'desktop', modules: ['telemetry'], vendors: ['acme', 'initech'] }
+    expect([...coveredVendors(sel, catalog).keys()].sort()).toEqual(['acme', 'globex'])
+    expect(effectiveItems(sel, catalog).map((i) => i.id)).toEqual(['telemetry', 'initech'])
+  })
+  it('works with an old catalog that has no vendors', () => {
+    const old = { ...catalog, vendors: undefined }
+    expect(defaultSelection(old).vendors).toEqual([])
   })
 })

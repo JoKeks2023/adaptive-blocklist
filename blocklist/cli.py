@@ -88,9 +88,9 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 def cmd_check_config(args: argparse.Namespace) -> int:
     config = load_config(Path(args.root).resolve())
-    used = {s for m in config.modules.values() for s in m.sources}
+    used = {s for m in [*config.modules.values(), *config.vendors.values()] for s in m.sources}
     unused = sorted(set(config.sources) - used)
-    print(f"Config OK: {len(config.sources)} sources, {len(config.modules)} modules, {len(config.profiles)} profiles")
+    print(f"Config OK: {len(config.sources)} sources, {len(config.modules)} modules, {len(config.vendors)} vendors, {len(config.profiles)} profiles")
     if unused:
         print(f"warning: sources not used by any module: {', '.join(unused)}")
     return 0

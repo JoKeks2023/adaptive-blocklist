@@ -56,6 +56,7 @@ def validate_output(out_dir: Path, config: Config) -> list[str]:
         problems.append("catalog build.status is not 'ok'")
 
     modules = {m["id"]: m for m in catalog.get("modules", [])}
+    vendors = {v["id"]: v for v in catalog.get("vendors", [])}
     profiles = {p["id"]: p for p in catalog.get("profiles", [])}
     if set(modules) != set(config.modules):
         problems.append(f"catalog modules {sorted(modules)} != configured {sorted(config.modules)}")
@@ -63,7 +64,14 @@ def validate_output(out_dir: Path, config: Config) -> list[str]:
         problems.append(f"catalog profiles {sorted(profiles)} != configured {sorted(config.profiles)}")
 
     module_sets: dict[str, set[str]] = {}
-    entries = [("module", e) for e in modules.values()] + [("profile", e) for e in profiles.values()]
+    if set(vendors) != set(config.vendors):
+        problems.append(f"catalog vendors {sorted(vendors)} != configured {sorted(config.vendors)}")
+    entries = (
+        [("module", e) for e in modules.values()]
+        + [("vendor", e) for e in vendors.values()]
+        + [("profile", e) for e in profiles.values()]
+    )
+    vendor_sets: dict[str, set[str]] = {}
     for kind, entry in entries:
         path = out_dir / entry["file"]
         domains = _read_list(path, problems)
@@ -83,15 +91,17 @@ def validate_output(out_dir: Path, config: Config) -> list[str]:
             leaked = next((d for d in domains if any(p in config.allow for p in parent_chain(d))), None)
             if leaked:
                 problems.append(f"{label}: contains allow-listed domain {leaked!r}")
-        if kind == "module":
-            module_sets[entry["id"]] = set(domains)
-            cfg = config.modules.get(entry["id"])
+        if kind in ("module", "vendor"):
+            (module_sets if kind == "module" else vendor_sets)[entry["id"]] = set(domains)
+            cfg = (config.modules if kind == "module" else config.vendors).get(entry["id"])
             if cfg and not cfg.allow_empty and len(domains) < max(cfg.min_domains, 1):
                 problems.append(f"{label}: {len(domains)} domains < min_domains {cfg.min_domains}")
         else:
             expected: set[str] = set()
             for m in entry["modules"]:
                 expected |= module_sets.get(m, set())
+            for v in entry.get("vendors", []):
+                expected |= vendor_sets.get(v, set())
             if set(domains) != expected:
-                problems.append(f"{label}: is not the union of its modules {entry['modules']}")
+                problems.append(f"{label}: is not the union of its modules {entry['modules']} and vendors {entry.get('vendors', [])}")
     return problems
