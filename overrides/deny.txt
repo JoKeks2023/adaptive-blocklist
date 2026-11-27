@@ -3,5 +3,3 @@
 # Add "custom" to a profile in config/profiles.yml to include it there.
 # Example:
 # tracker.example.net
-# issue #4
-test-accept.example.com
