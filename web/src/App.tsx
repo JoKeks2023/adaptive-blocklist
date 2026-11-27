@@ -8,7 +8,7 @@ import { VendorPicker } from './components/VendorPicker'
 import { applyExtras, parseDomainLines } from './lib/extras'
 import { formatBytes, formatCount, mergeDomains, parseHostsList, renderCustomList } from './lib/lists'
 import { downloadBlob, fetchCatalog, fetchHead, fetchText } from './lib/net'
-import { coveredVendors, effectiveItems, matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule, toggleVendor, vendorsOf } from './lib/state'
+import { coveredVendors, effectiveItems, matchingProfile, parseShareParams, planAddresses, selectProfile, serializeSelection, toggleModule, toggleVendor, vendorsOf } from './lib/state'
 import type { Catalog, ModuleEntry, Selection } from './lib/types'
 import { absoluteUrl, issueUrl, siteBase } from './lib/urls'
 
@@ -113,9 +113,9 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
   const vendors = vendorsOf(catalog)
   const empty = items.length === 0 && deny.length === 0
   const profile = catalog.profiles.find((p) => p.id === selection.profileId)!
-  const matched = hasExtras ? null : matchingProfile(selection, catalog)
+  const plan = planAddresses(selection, catalog)
+  const matched = hasExtras || plan.kind !== 'profile' ? null : matchingProfile(selection, catalog)
   const modules = catalog.modules.filter((m) => !(m.include_deny && m.domains === 0))
-  const sumDomains = items.reduce((n, m) => n + m.domains, 0)
   const url = useCallback((path: string) => absoluteUrl(path, base), [base])
 
   const loadItems = useCallback(async (list: ModuleEntry[]): Promise<string[][]> => {
@@ -164,11 +164,7 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
       vendors: selection.vendors.filter((id) => !isHigh(vendors.find((v) => v.id === id)!)),
     })
 
-  const guideUrls = empty
-    ? []
-    : matched
-      ? [{ label: matched.name, url: url(matched.file) }]
-      : items.map((m) => ({ label: m.name, url: url(m.file) }))
+  const guideUrls = empty ? [] : plan.addresses.map((a) => ({ label: a.label, url: url(a.file) }))
 
   const onDownload = async () => {
     setLoadError(null)
@@ -195,7 +191,7 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
   const wikiUrl = repo ? `https://github.com/${repo}/wiki` : null
   const built = new Date(catalog.build.time)
   const suggested = profile.suggested_vendors ?? []
-  const summary = `${profile.name} · ${selection.vendors.length ? `${selection.vendors.length} brand${selection.vendors.length > 1 ? 's' : ''} · ` : ''}${matched ? formatCount(matched.domains) : `up to ${formatCount(sumDomains)}`} domains`
+  const summary = `${profile.name} · ${selection.vendors.length ? `${selection.vendors.length} brand${selection.vendors.length > 1 ? 's' : ''} · ` : ''}${matched ? formatCount(matched.domains) : `up to ${formatCount(plan.domains)}`} domains`
 
   return (
     <>
@@ -270,13 +266,13 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
                 <p className="summary">{summary}{matched ? ` · ${formatBytes(matched.bytes)}` : ''}</p>
                 <p className={`kind ${matched ? 'kind-perm' : 'kind-custom'}`}>
                   <span className="dot" aria-hidden="true" />
-                  {matched ? 'Permanent address, subscribe once' : hasExtras ? 'Custom file, download only' : 'Subscribe to these addresses'}
+                  {matched ? 'Permanent address, subscribe once' : hasExtras ? 'Custom file, download only' : `${guideUrls.length} permanent address${guideUrls.length > 1 ? 'es' : ''}, add ${guideUrls.length > 1 ? 'all' : 'it'}`}
                 </p>
                 {!matched && (
                   <p className="hint">
                     {hasExtras
                       ? 'Your own domains change the list, so it is a custom file with no address. Download it, or subscribe to the addresses below and add your rules in your DNS filter.'
-                      : 'Each address below is permanent. Add all of them to your DNS filter, or download one combined file.'}
+                      : 'Pi-hole and AdGuard Home accept several lists. Add each address below, or download one combined file.'}
                   </p>
                 )}
                 <ul className="addrs">

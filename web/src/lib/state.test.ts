@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mergeDomains, parseHostsList, renderCustomList } from './lists'
-import { coveredVendors, defaultSelection, effectiveItems, matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule, toggleVendor } from './state'
+import { coveredVendors, planAddresses, defaultSelection, effectiveItems, matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule, toggleVendor } from './state'
 import { absoluteUrl, issueUrl, siteBase } from './urls'
 import type { Catalog } from './types'
 
@@ -127,5 +127,29 @@ describe('own allow/deny domains', () => {
   })
   it('adds denied domains, deduped and sorted, unless allow-listed', () => {
     expect(applyExtras(['b.com'], ['z.com'], ['a.com', 'a.com', 'z.com'])).toEqual(['a.com', 'b.com'])
+  })
+})
+
+describe('address plan', () => {
+  it('uses the single profile address when the selection matches a profile', () => {
+    const plan = planAddresses(selectProfile('tv', catalog), catalog)
+    expect(plan.kind).toBe('profile')
+    expect(plan.addresses.map((a) => a.file)).toEqual(['lists/profiles/tv.txt'])
+  })
+  it('device type + brands = the device list plus one list per brand (no unrelated modules)', () => {
+    const sel = { profileId: 'lite', modules: ['advertising', 'malware'], vendors: ['acme', 'initech'] }
+    const plan = planAddresses(sel, catalog)
+    expect(plan.kind).toBe('bundle')
+    expect(plan.addresses.map((a) => a.file)).toEqual(['lists/profiles/lite.txt', 'lists/vendors/acme.txt', 'lists/vendors/initech.txt'])
+    expect(plan.exact).toBe(false)
+  })
+  it('falls back to individual lists for other module combinations', () => {
+    const plan = planAddresses({ profileId: 'lite', modules: ['tracking'], vendors: ['acme'] }, catalog)
+    expect(plan.kind).toBe('parts')
+    expect(plan.addresses.map((a) => a.file)).toEqual(['lists/modules/tracking.txt', 'lists/vendors/acme.txt'])
+  })
+  it('does not list a brand that an enabled module already contains', () => {
+    const plan = planAddresses({ profileId: 'desktop', modules: ['telemetry'], vendors: ['acme', 'initech'] }, catalog)
+    expect(plan.addresses.map((a) => a.file)).toEqual(['lists/modules/telemetry.txt', 'lists/vendors/initech.txt'])
   })
 })

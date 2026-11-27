@@ -93,3 +93,42 @@ export function effectiveItems(sel: Selection, catalog: Catalog): ModuleEntry[] 
     ...vendorsOf(catalog).filter((v) => sel.vendors.includes(v.id) && !covered.has(v.id)),
   ]
 }
+
+export interface Address {
+  label: string
+  file: string
+  domains: number
+}
+
+export interface Plan {
+  /** profile: one published profile list; bundle: a profile list plus brand lists; parts: individual lists. */
+  kind: 'profile' | 'bundle' | 'parts'
+  addresses: Address[]
+  /** Domains if exact (profile), otherwise an upper bound before de-duplication. */
+  domains: number
+  exact: boolean
+}
+
+/**
+ * Which permanent addresses a DNS filter has to subscribe to for this selection.
+ * Prefers the fewest addresses: a published profile, then "profile + brand lists", then single lists.
+ */
+export function planAddresses(sel: Selection, catalog: Catalog): Plan {
+  const exact = matchingProfile(sel, catalog)
+  if (exact) return { kind: 'profile', addresses: [{ label: exact.name, file: exact.file, domains: exact.domains }], domains: exact.domains, exact: true }
+
+  const covered = coveredVendors(sel, catalog)
+  const vendors = vendorsOf(catalog).filter((v) => sel.vendors.includes(v.id) && !covered.has(v.id))
+  const base =
+    [catalog.profiles.find((p) => p.id === sel.profileId), ...catalog.profiles].find(
+      (p) => p && sameSet(sel.modules, mods(p.modules, catalog)) && (p.vendors ?? []).every((v) => sel.vendors.includes(v)),
+    ) ?? null
+  if (base && vendors.length > 0) {
+    const own = new Set(base.vendors ?? [])
+    const extra = vendors.filter((v) => !own.has(v.id))
+    const addresses = [{ label: `${base.name} base`, file: base.file, domains: base.domains }, ...extra.map((v) => ({ label: v.name, file: v.file, domains: v.domains }))]
+    return { kind: 'bundle', addresses, domains: addresses.reduce((n, a) => n + a.domains, 0), exact: false }
+  }
+  const items = effectiveItems(sel, catalog)
+  return { kind: 'parts', addresses: items.map((i) => ({ label: i.name, file: i.file, domains: i.domains })), domains: items.reduce((n, i) => n + i.domains, 0), exact: false }
+}

@@ -43,8 +43,9 @@ Ready-made addresses (replace nothing, they are permanent):
 | Telemetry (⚠ can break updates and devices) | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/telemetry.txt` |
 | Malware | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/malware.txt` |
 
-Custom combinations made in the configurator are assembled in your browser: you can download them as a TXT file or share the
-link, but they have **no permanent subscription address**. Subscribe to the module addresses instead.
+For any combination the configurator lists the permanent addresses to add (device type list + brand lists, or module lists). A
+combined single file is assembled in your browser and has **no permanent address**; it can be downloaded as TXT, and your choices
+can be shared as a link.
 
 ## Contents
 
@@ -63,10 +64,14 @@ link, but they have **no permanent subscription address**. Subscribe to the modu
 | Telemetry | Built-in telemetry of Windows, Apple, Amazon, Samsung, LG, Roku | **High**: may block updates, app stores, voice assistants |
 | Malware | Malware, phishing, scams, command-and-control | Low |
 
-A **device type** (profile) is a ready-made starting point: Desktop, Smart TV, Smart Home, Mobile, Gaming or Universal.
+A **device type** (profile) is a ready-made starting point, tailored to the device: **Desktop**, **Mobile** and **Universal** include
+ad and tracker lists; **Smart TV**, **Smart Home** and **Gaming** contain only malware protection, because browser ad lists do not
+help on those devices and can break them. You add the telemetry of your brand on top.
 A **vendor** list blocks the built-in telemetry of one manufacturer (Microsoft, Apple, Amazon, Samsung, LG, Roku, Xiaomi,
-Huawei, OPPO/Realme, Vivo, TikTok), so you only block what you own. You can change modules and vendors freely; a combination
-that matches a device type uses that type's permanent address, anything else is assembled in your browser.
+Huawei, OPPO/Realme, Vivo, TikTok), so you only block what you own. You can change modules and vendors freely. The configurator
+then shows the **permanent addresses** to subscribe to: one address if it matches a device type, otherwise the device type's list
+plus one list per brand (for example *Smart TV + LG* = 2 addresses). Pi-hole and AdGuard Home accept as many lists as you like.
+You can also download everything as one combined file, assembled in your browser.
 The *Telemetry* module already contains all vendor lists, so vendors it covers show as "included". More device types only need
 a few lines of YAML, see [Create a device profile](#create-a-device-profile).
 Every source (origin, license, purpose, status) is listed in the configurator under *Sources & risks* and in `data/catalog.json`.

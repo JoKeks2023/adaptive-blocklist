@@ -11,14 +11,14 @@ profiles:
 
   smart-tv:
     name: Smart TV
-    description: "Smart TVs and streaming boxes. Choose your TV brand to block its built-in telemetry."
-    modules: [advertising, tracking, malware]
+    description: "Smart TVs and streaming boxes. Malware protection plus the telemetry and ads of the TV brand you choose; no browser ad lists."
+    modules: [malware]
     suggested_vendors: [samsung, lg, roku, amazon, xiaomi]
 
   smart-home:
     name: Smart Home
-    description: "Smart speakers, cameras and hubs. Conservative: pick the brands you actually use."
-    modules: [tracking, malware]
+    description: "Smart speakers, cameras and hubs. Malware protection plus the brands you actually use; conservative, so devices keep working."
+    modules: [malware]
     suggested_vendors: [amazon, xiaomi, samsung]
 
   mobile:
@@ -29,8 +29,8 @@ profiles:
 
   gaming:
     name: Gaming
-    description: "Consoles and gaming PCs. Light protection that avoids breaking online play and stores."
-    modules: [tracking, malware]
+    description: "Consoles and gaming PCs. Malware protection only, so online play and stores keep working."
+    modules: [malware]
     suggested_vendors: [microsoft]
 
   universal:

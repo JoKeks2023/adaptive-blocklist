@@ -39,8 +39,8 @@ Fertige, dauerhafte Adressen:
 | Telemetry (⚠ kann Updates und Geräte stören) | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/telemetry.txt` |
 | Malware | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/malware.txt` |
 
-Eigene Kombinationen aus dem Konfigurator werden in deinem Browser zusammengesetzt: Du kannst sie als TXT herunterladen oder den Link teilen,
-sie haben aber **keine dauerhafte Abo-Adresse**. Abonniere stattdessen die einzelnen Modul-Adressen.
+Für jede Kombination zeigt der Konfigurator die dauerhaften Adressen zum Hinzufügen. Eine einzelne kombinierte Datei wird in deinem Browser zusammengesetzt
+und hat **keine dauerhafte Abo-Adresse**; du kannst sie als TXT herunterladen und deine Auswahl als Link teilen.
 
 ## Gerätetypen, Module und Hersteller
 
@@ -53,7 +53,8 @@ sie haben aber **keine dauerhafte Abo-Adresse**. Abonniere stattdessen die einze
 
 Ein **Gerätetyp** (Profil) ist ein fertiger Startpunkt: Desktop, Smart TV, Smart Home, Mobile, Gaming oder Universal.
 Eine **Hersteller**-Liste blockt die eingebaute Telemetrie eines Herstellers (Microsoft, Apple, Amazon, Samsung, LG, Roku, Xiaomi, Huawei, OPPO/Realme, Vivo, TikTok), damit du nur blockst, was du besitzt.
-Module und Hersteller sind frei kombinierbar. Passt die Kombination zu einem Gerätetyp, gilt dessen dauerhafte Adresse; alles andere wird im Browser zusammengesetzt.
+Module und Hersteller sind frei kombinierbar. Der Konfigurator zeigt dir die **dauerhaften Adressen**, die du abonnierst: eine Adresse, wenn es zu einem Gerätetyp passt, sonst die Liste des Gerätetyps plus je eine Liste pro Marke (z. B. *Smart TV + LG* = 2 Adressen). Pi-hole und AdGuard Home nehmen beliebig viele Listen an.
+Smart TV, Smart Home und Gaming enthalten nur Malware-Schutz (Browser-Werbelisten helfen dort nicht), du ergänzt die Telemetrie deiner Marke.
 Das Modul *Telemetry* enthält bereits alle Hersteller-Listen.
 
 ## Mithelfen
