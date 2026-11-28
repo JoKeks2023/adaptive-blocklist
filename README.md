@@ -42,8 +42,9 @@ Ready-made addresses (replace nothing, they are permanent):
 | Tracking | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/tracking.txt` |
 | Telemetry (⚠ can break updates and devices) | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/telemetry.txt` |
 | Malware | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/malware.txt` |
+| A single source, e.g. StevenBlack unified | `https://jokeks2023.github.io/adaptive-blocklist/lists/sources/stevenblack-unified.txt` (one file per active source) |
 
-For any combination the configurator lists the permanent addresses to add (device type list + brand lists, or module lists). A
+In the module details you can switch individual sources off (the module then becomes one list per remaining source). The page is available in English and German (language button, follows your browser by default). For any combination the configurator lists the permanent addresses to add (device type list + brand lists, or module lists). A
 combined single file is assembled in your browser and has **no permanent address**; it can be downloaded as TXT, and your choices
 can be shared as a link.
 
@@ -106,7 +107,7 @@ sources (https)┘   download→parse→       └─ data/{catalog,stats}.json
 ```
 
 Published files (relative to the Pages site, so project pages and custom domains both work):
-`lists/modules/*.txt`, `lists/vendors/*.txt`, `lists/profiles/*.txt`, `data/catalog.json`, `data/stats.json`.
+`lists/modules/*.txt`, `lists/vendors/*.txt`, `lists/sources/*.txt`, `lists/profiles/*.txt`, `data/catalog.json`, `data/stats.json`.
 
 Engine rules:
 

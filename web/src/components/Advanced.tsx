@@ -1,4 +1,5 @@
 import { parseDomainLines } from '../lib/extras'
+import { useI18n } from '../lib/i18n'
 
 interface Props {
   allow: string
@@ -8,6 +9,7 @@ interface Props {
 }
 
 function Field({ id, label, hint, value, onChange }: { id: string; label: string; hint: string; value: string; onChange: (v: string) => void }) {
+  const { t } = useI18n()
   const { invalid } = parseDomainLines(value)
   return (
     <div className="field">
@@ -25,22 +27,20 @@ function Field({ id, label, hint, value, onChange }: { id: string; label: string
         onChange={(e) => onChange(e.target.value)}
       />
       {invalid.length > 0 && (
-        <p className="error" id={`${id}-err`}>Not valid domains (ignored): {invalid.slice(0, 3).join(', ')}{invalid.length > 3 ? ` and ${invalid.length - 3} more` : ''}</p>
+        <p className="error" id={`${id}-err`}>{t('adv.invalid', { list: invalid.slice(0, 3).join(', ') + (invalid.length > 3 ? t('adv.more', { n: invalid.length - 3 }) : '') })}</p>
       )}
     </div>
   )
 }
 
 export function Advanced({ allow, deny, onAllow, onDeny }: Props) {
+  const { t } = useI18n()
   return (
     <details className="more adv">
-      <summary>Advanced: your own allow and block domains</summary>
-      <p className="hint">
-        Applied in your browser to a download. Because this changes the list, the result becomes a custom file (no permanent
-        address). In Pi-hole or AdGuard Home you can also keep your own rules there.
-      </p>
-      <Field id="allow" label="Never block (allowlist)" hint="One domain per line. Also unblocks its subdomains." value={allow} onChange={onAllow} />
-      <Field id="deny" label="Always block (denylist)" hint="One domain per line." value={deny} onChange={onDeny} />
+      <summary>{t('adv.summary')}</summary>
+      <p className="hint">{t('adv.intro')}</p>
+      <Field id="allow" label={t('adv.allow')} hint={t('adv.allow.hint')} value={allow} onChange={onAllow} />
+      <Field id="deny" label={t('adv.deny')} hint={t('adv.deny.hint')} value={deny} onChange={onDeny} />
     </details>
   )
 }

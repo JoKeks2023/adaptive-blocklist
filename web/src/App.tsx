@@ -6,15 +6,15 @@ import { ModuleList } from './components/ModuleList'
 import { SetupGuide } from './components/SetupGuide'
 import { VendorPicker } from './components/VendorPicker'
 import { applyExtras, parseDomainLines } from './lib/extras'
-import { formatBytes, formatCount, mergeDomains, parseHostsList, renderCustomList } from './lib/lists'
+import { formatBytes, mergeDomains, parseHostsList, renderCustomList } from './lib/lists'
 import { downloadBlob, fetchCatalog, fetchHead, fetchText } from './lib/net'
-import { coveredVendors, effectiveItems, matchingProfile, parseShareParams, planAddresses, selectProfile, serializeSelection, toggleModule, toggleVendor, vendorsOf } from './lib/state'
+import { coveredVendors, effectiveItems, matchingProfile, parseShareParams, planAddresses, selectProfile, serializeSelection, toggleModule, toggleSource, toggleVendor, vendorsOf } from './lib/state'
 import type { Catalog, ModuleEntry, Selection } from './lib/types'
+import { Rich, useI18n } from './lib/i18n'
 import { absoluteUrl, issueUrl, siteBase } from './lib/urls'
 
 type Theme = 'system' | 'light' | 'dark'
 const PREVIEW_LINES = 60
-const THEME_LABEL = { system: 'Auto', light: 'Light', dark: 'Dark' } as const
 
 function useTheme(): [Theme, () => void] {
   const [theme, setTheme] = useState<Theme>(() => {
@@ -45,6 +45,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null)
   const [selection, setSelection] = useState<Selection | null>(null)
   const [theme, cycleTheme] = useTheme()
+  const { t } = useI18n()
 
   useEffect(() => {
     fetchCatalog(base)
@@ -66,9 +67,9 @@ export function App() {
   if (error) {
     return (
       <main className="page">
-        <h1>Universal Blocklist</h1>
+        <h1>{t('app.name')}</h1>
         <p className="note" role="alert">
-          The published lists could not be loaded ({error}). If you are running locally, build them first:{' '}
+          {t('load.error', { error })}{' '}
           <code>python -m blocklist build</code>.
         </p>
       </main>
@@ -77,8 +78,8 @@ export function App() {
   if (!catalog || !selection) {
     return (
       <main className="page">
-        <h1>Universal Blocklist</h1>
-        <p className="muted" role="status">Loading…</p>
+        <h1>{t('app.name')}</h1>
+        <p className="muted" role="status">{t('load.loading')}</p>
       </main>
     )
   }
@@ -95,6 +96,7 @@ interface Props {
 }
 
 function Configurator({ catalog, selection, setSelection, base, theme, cycleTheme }: Props) {
+  const { t, lang, setLang, content, number } = useI18n()
   const cache = useRef(new Map<string, string[]>())
   const [previewOpen, setPreviewOpen] = useState(false)
   const [preview, setPreview] = useState<{ lines: string[]; total: number | null } | null>(null)
@@ -109,10 +111,14 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
 
   const items = effectiveItems(selection, catalog)
   const itemsKey = items.map((i) => i.file).join()
-  const covered = coveredVendors(selection, catalog)
+  const covered = useMemo(() => {
+    const names = new Map(catalog.modules.map((m) => [m.name, content.name(m)]))
+    return new Map([...coveredVendors(selection, catalog)].map(([id, name]) => [id, names.get(name) ?? name]))
+  }, [selection, catalog, content])
   const vendors = vendorsOf(catalog)
   const empty = items.length === 0 && deny.length === 0
   const profile = catalog.profiles.find((p) => p.id === selection.profileId)!
+  const profileName = content.name(profile)
   const plan = planAddresses(selection, catalog)
   const matched = hasExtras || plan.kind !== 'profile' ? null : matchingProfile(selection, catalog)
   const modules = catalog.modules.filter((m) => !(m.include_deny && m.domains === 0))
@@ -191,50 +197,48 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
   const wikiUrl = repo ? `https://github.com/${repo}/wiki` : null
   const built = new Date(catalog.build.time)
   const suggested = profile.suggested_vendors ?? []
-  const summary = `${profile.name} · ${selection.vendors.length ? `${selection.vendors.length} brand${selection.vendors.length > 1 ? 's' : ''} · ` : ''}${matched ? formatCount(matched.domains) : `up to ${formatCount(plan.domains)}`} domains`
+  const brandText = selection.vendors.length === 1 ? t('result.brand.one') : t('result.brand.many', { n: selection.vendors.length })
+  const summary = `${profileName} · ${selection.vendors.length ? `${brandText} · ` : ''}${matched ? number(matched.domains) : t('result.upto', { n: number(plan.domains) })} ${t('result.domains')}`
 
   return (
     <>
       <main className="page">
         <header className="top">
-          <span className="brand">Universal Blocklist</span>
-          <button type="button" className="btn btn-ghost" onClick={cycleTheme} aria-label={`Theme: ${THEME_LABEL[theme]}. Activate to change`}>
-            Theme: {THEME_LABEL[theme]}
-          </button>
+          <span className="brand">{t('app.name')}</span>
+          <div className="top-actions">
+            <button type="button" className="btn btn-ghost" lang={lang === 'de' ? 'en' : 'de'} onClick={() => setLang(lang === 'de' ? 'en' : 'de')} aria-label={t('lang.aria')}>
+              {t('lang.switch')}
+            </button>
+            <button type="button" className="btn btn-ghost" onClick={cycleTheme} aria-label={t('theme.aria', { mode: t(`theme.${theme}`) })}>
+              {t('theme.label', { mode: t(`theme.${theme}`) })}
+            </button>
+          </div>
         </header>
 
         <section className="hero">
-          <h1>Block ads, trackers and telemetry on your network.</h1>
-          <p className="lead">
-            Choose your device type and the brands you own. Paste one address into Pi-hole or AdGuard Home. Lists are rebuilt
-            daily from public sources.
-          </p>
+          <h1>{t('hero.title')}</h1>
+          <p className="lead">{t('hero.lead')}</p>
           <details className="more">
-            <summary>New here? What is this?</summary>
-            <p>
-              A <strong>DNS filter</strong> such as Pi-hole or AdGuard Home runs on a small computer in your network and decides
-              which internet addresses your devices may look up. A <strong>blocklist</strong> tells it which addresses belong to
-              ads, trackers or malware, so those requests never leave your home. You do not download anything: the filter fetches
-              and updates the list itself.
-            </p>
+            <summary>{t('hero.new')}</summary>
+            <p><Rich text={t('hero.explain')} /></p>
           </details>
         </section>
 
         <div className="layout">
           <div className="config">
             <section aria-labelledby="h-type">
-              <h2 id="h-type"><span className="step">1</span>Device type</h2>
+              <h2 id="h-type"><span className="step">1</span>{t('step.type')}</h2>
               <DeviceTypes catalog={catalog} profileId={selection.profileId} onSelect={(id) => setSelection(selectProfile(id, catalog))} />
             </section>
 
             {vendors.length > 0 && (
               <section aria-labelledby="h-brands">
-                <h2 id="h-brands"><span className="step">2</span>Your brands</h2>
-                <p className="sect-desc">Select the brands of your devices. Only their built-in telemetry is blocked, so nothing is blocked by accident.</p>
+                <h2 id="h-brands"><span className="step">2</span>{t('step.brands')}</h2>
+                <p className="sect-desc">{t('step.brands.desc')}</p>
                 <VendorPicker
                   vendors={vendors}
                   suggestedIds={suggested}
-                  suggestedFor={profile.name}
+                  suggestedFor={profileName}
                   selected={selection.vendors}
                   covered={covered}
                   sources={catalog.sources}
@@ -244,12 +248,12 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
             )}
 
             <section aria-labelledby="h-modules">
-              <h2 id="h-modules"><span className="step">3</span>What to block</h2>
-              <ModuleList modules={modules} enabled={selection.modules} sources={catalog.sources} onToggle={(id) => setSelection(toggleModule(selection, id, catalog))} />
+              <h2 id="h-modules"><span className="step">3</span>{t('step.modules')}</h2>
+              <ModuleList modules={modules} enabled={selection.modules} sources={catalog.sources} excluded={selection.excluded} onToggle={(id) => setSelection(toggleModule(selection, id, catalog))} onToggleSource={(id) => setSelection(toggleSource(selection, id))} />
               {riskyOn && (
                 <p className="hint">
-                  First DNS filter? Entries marked high risk can break updates or smart devices.{' '}
-                  <button type="button" className="link inline" onClick={switchOffRisky}>Switch them off to start safely</button>
+                  {t('risk.hint')}{' '}
+                  <button type="button" className="link inline" onClick={switchOffRisky}>{t('risk.off')}</button>
                 </p>
               )}
             </section>
@@ -258,21 +262,19 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
           </div>
 
           <aside className="result" id="your-list" aria-labelledby="h-result">
-            <h2 id="h-result">Your list</h2>
+            <h2 id="h-result">{t('result.title')}</h2>
             {empty ? (
-              <p className="muted">Turn on at least one module or brand.</p>
+              <p className="muted">{t('result.empty')}</p>
             ) : (
               <>
                 <p className="summary">{summary}{matched ? ` · ${formatBytes(matched.bytes)}` : ''}</p>
                 <p className={`kind ${matched ? 'kind-perm' : 'kind-custom'}`}>
                   <span className="dot" aria-hidden="true" />
-                  {matched ? 'Permanent address, subscribe once' : hasExtras ? 'Custom file, download only' : `${guideUrls.length} permanent address${guideUrls.length > 1 ? 'es' : ''}, add ${guideUrls.length > 1 ? 'all' : 'it'}`}
+                  {matched ? t('result.perm') : hasExtras ? t('result.custom') : guideUrls.length > 1 ? t('result.addr.many', { n: guideUrls.length }) : t('result.addr.one')}
                 </p>
                 {!matched && (
                   <p className="hint">
-                    {hasExtras
-                      ? 'Your own domains change the list, so it is a custom file with no address. Download it, or subscribe to the addresses below and add your rules in your DNS filter.'
-                      : 'Pi-hole and AdGuard Home accept several lists. Add each address below, or download one combined file.'}
+                    {hasExtras ? t('result.hint.extras') : t('result.hint.multi')}
                   </p>
                 )}
                 <ul className="addrs">
@@ -281,35 +283,35 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
                       {guideUrls.length > 1 && <span className="addr-name">{u.label}</span>}
                       <div className="addr">
                         <code title={u.url}>{u.url}</code>
-                        <CopyButton text={u.url} label={`${u.label} address`} />
+                        <CopyButton text={u.url} label={t('copy.address', { name: u.label })} />
                       </div>
                     </li>
                   ))}
                 </ul>
                 <div className="actions">
                   {matched ? (
-                    <a className="btn btn-primary" href={url(matched.file)} download={`${matched.id}.txt`}>Download TXT</a>
+                    <a className="btn btn-primary" href={url(matched.file)} download={`${matched.id}.txt`}>{t('result.download')}</a>
                   ) : (
                     <button type="button" className="btn btn-primary" disabled={busy} onClick={onDownload}>
-                      {busy ? 'Preparing…' : 'Download TXT'}
+                      {busy ? t('result.preparing') : t('result.download')}
                     </button>
                   )}
-                  <CopyButton text={shareUrl} label="share link" caption="Copy share link" className="btn-secondary" />
+                  <CopyButton text={shareUrl} label={t('result.share.label')} caption={t('result.share')} className="btn-secondary" />
                   <button type="button" className="btn btn-secondary" aria-expanded={previewOpen} onClick={() => setPreviewOpen(!previewOpen)}>
-                    {previewOpen ? 'Hide preview' : 'Preview'}
+                    {previewOpen ? t('result.preview.hide') : t('result.preview')}
                   </button>
                 </div>
-                <p className="hint">The share link stores only your choices, not the list.</p>
+                <p className="hint">{t('result.share.hint')}</p>
                 {loadError && <p className="note" role="alert">{loadError}</p>}
                 {previewOpen && (
                   <div className="preview" aria-live="polite">
                     {preview ? (
                       <>
                         <pre tabIndex={0}>{preview.lines.map((d) => `0.0.0.0 ${d}`).join('\n')}</pre>
-                        <p className="hint">First {preview.lines.length} of {preview.total != null ? formatCount(preview.total) : '…'} entries.</p>
+                        <p className="hint">{t('result.preview.first', { n: preview.lines.length, total: preview.total != null ? number(preview.total) : '…' })}</p>
                       </>
                     ) : (
-                      <p className="muted" role="status">Loading preview…</p>
+                      <p className="muted" role="status">{t('result.preview.loading')}</p>
                     )}
                   </div>
                 )}
@@ -322,46 +324,46 @@ function Configurator({ catalog, selection, setSelection, base, theme, cycleThem
 
         {(reportUrl || suggestUrl) && (
           <section aria-labelledby="h-help" className="help">
-            <h2 id="h-help">Help improve the lists</h2>
+            <h2 id="h-help">{t('help.title')}</h2>
             <ul className="help-list">
               {reportUrl && (
                 <li>
                   <div>
-                    <strong>Something stopped working?</strong>
-                    <p className="muted">Your configuration is attached automatically.</p>
+                    <strong>{t('help.broken')}</strong>
+                    <p className="muted">{t('help.broken.desc')}</p>
                   </div>
-                  <a className="btn btn-secondary" href={reportUrl} target="_blank" rel="noreferrer noopener">Report a problem</a>
+                  <a className="btn btn-secondary" href={reportUrl} target="_blank" rel="noreferrer noopener">{t('help.broken.cta')}</a>
                 </li>
               )}
               {suggestUrl && (
                 <li>
                   <div>
-                    <strong>A domain that should be blocked?</strong>
-                    <p className="muted">Ad, tracking, telemetry or malware domains.</p>
+                    <strong>{t('help.suggest')}</strong>
+                    <p className="muted">{t('help.suggest.desc')}</p>
                   </div>
-                  <a className="btn btn-secondary" href={suggestUrl} target="_blank" rel="noreferrer noopener">Suggest domains</a>
+                  <a className="btn btn-secondary" href={suggestUrl} target="_blank" rel="noreferrer noopener">{t('help.suggest.cta')}</a>
                 </li>
               )}
             </ul>
-            <p className="hint">Opens a GitHub issue form; a GitHub account is required.</p>
+            <p className="hint">{t('help.note')}</p>
           </section>
         )}
 
         <footer className="foot">
           <p>
-            Built {Number.isNaN(built.getTime()) ? catalog.build.time : built.toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })} · version{' '}
+            {t('foot.built', { time: Number.isNaN(built.getTime()) ? catalog.build.time : built.toLocaleString(lang, { dateStyle: 'medium', timeStyle: 'short' }) })}{' '}
             <span className="mono">{catalog.build.version}</span> · <a href={url('data/catalog.json')}>catalog.json</a> ·{' '}
             <a href={url('data/stats.json')}>stats.json</a>
             {wikiUrl && <> · <a href={wikiUrl}>Wiki</a></>}
             {repo && <> · <a href={`https://github.com/${repo}`}>GitHub</a></>}
           </p>
-          <p>Entries are exact domains (hosts format, <code>0.0.0.0 domain</code>). Review high-risk entries before using them on devices that depend on updates or cloud features.</p>
+          <p><Rich text={t('foot.note')} /></p>
         </footer>
       </main>
 
-      <div className="dock" role="region" aria-label="Your list summary">
-        <span className="dock-text">{empty ? 'Nothing selected' : summary}</span>
-        <a className="btn btn-primary" href="#your-list">Get your list</a>
+      <div className="dock" role="region" aria-label={t('dock.label')}>
+        <span className="dock-text">{empty ? t('dock.none') : summary}</span>
+        <a className="btn btn-primary" href="#your-list">{t('dock.cta')}</a>
       </div>
     </>
   )

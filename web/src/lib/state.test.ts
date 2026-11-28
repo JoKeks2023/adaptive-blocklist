@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mergeDomains, parseHostsList, renderCustomList } from './lists'
-import { coveredVendors, planAddresses, defaultSelection, effectiveItems, matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule, toggleVendor } from './state'
+import { activeExclusions, toggleSource, coveredVendors, planAddresses, defaultSelection, effectiveItems, matchingProfile, parseShareParams, selectProfile, serializeSelection, toggleModule, toggleVendor } from './state'
 import { absoluteUrl, issueUrl, siteBase } from './urls'
 import type { Catalog } from './types'
 
@@ -19,7 +19,10 @@ const catalog: Catalog = {
     { id: 'lite', name: 'Lite', description: '', modules: ['advertising', 'malware'], domains: 2, file: 'lists/profiles/lite.txt', bytes: 1 },
     { id: 'tv', name: 'TV', description: '', modules: ['malware'], vendors: ['acme', 'globex'], domains: 2, file: 'lists/profiles/tv.txt', bytes: 1 },
   ],
-  sources: [],
+  sources: ['s-acme', 's-globex'].map((id) => ({
+    id, name: id, homepage: '', license: '', license_url: '', purpose: `${id} purpose`, format: 'hosts', status: 'ok',
+    domains: 5, error: null, file: `lists/sources/${id}.txt`, listed: 5, bytes: 9,
+  })),
 }
 
 describe('share links', () => {
@@ -47,11 +50,11 @@ describe('share links', () => {
 
 describe('profile matching', () => {
   it('detects a published profile regardless of the profile it started from', () => {
-    const sel = { profileId: 'desktop', modules: ['advertising', 'malware'], vendors: [] }
+    const sel = { profileId: 'desktop', modules: ['advertising', 'malware'], vendors: [], excluded: [] }
     expect(matchingProfile(sel, catalog)?.id).toBe('lite')
   })
   it('returns null for custom combinations (no permanent URL)', () => {
-    expect(matchingProfile({ profileId: 'desktop', modules: ['tracking'], vendors: [] }, catalog)).toBeNull()
+    expect(matchingProfile({ profileId: 'desktop', modules: ['tracking'], vendors: [], excluded: [] }, catalog)).toBeNull()
   })
 })
 
@@ -104,7 +107,7 @@ describe('vendors', () => {
     expect(matchingProfile(toggleVendor(selectProfile('tv', catalog), 'initech', catalog), catalog)).toBeNull()
   })
   it('a module that contains a vendor list covers it (no double fetch)', () => {
-    const sel = { profileId: 'desktop', modules: ['telemetry'], vendors: ['acme', 'initech'] }
+    const sel = { profileId: 'desktop', modules: ['telemetry'], vendors: ['acme', 'initech'], excluded: [] }
     expect([...coveredVendors(sel, catalog).keys()].sort()).toEqual(['acme', 'globex'])
     expect(effectiveItems(sel, catalog).map((i) => i.id)).toEqual(['telemetry', 'initech'])
   })
@@ -137,19 +140,56 @@ describe('address plan', () => {
     expect(plan.addresses.map((a) => a.file)).toEqual(['lists/profiles/tv.txt'])
   })
   it('device type + brands = the device list plus one list per brand (no unrelated modules)', () => {
-    const sel = { profileId: 'lite', modules: ['advertising', 'malware'], vendors: ['acme', 'initech'] }
+    const sel = { profileId: 'lite', modules: ['advertising', 'malware'], vendors: ['acme', 'initech'], excluded: [] }
     const plan = planAddresses(sel, catalog)
     expect(plan.kind).toBe('bundle')
     expect(plan.addresses.map((a) => a.file)).toEqual(['lists/profiles/lite.txt', 'lists/vendors/acme.txt', 'lists/vendors/initech.txt'])
     expect(plan.exact).toBe(false)
   })
   it('falls back to individual lists for other module combinations', () => {
-    const plan = planAddresses({ profileId: 'lite', modules: ['tracking'], vendors: ['acme'] }, catalog)
+    const plan = planAddresses({ profileId: 'lite', modules: ['tracking'], vendors: ['acme'], excluded: [] }, catalog)
     expect(plan.kind).toBe('parts')
     expect(plan.addresses.map((a) => a.file)).toEqual(['lists/modules/tracking.txt', 'lists/vendors/acme.txt'])
   })
   it('does not list a brand that an enabled module already contains', () => {
-    const plan = planAddresses({ profileId: 'desktop', modules: ['telemetry'], vendors: ['acme', 'initech'] }, catalog)
+    const plan = planAddresses({ profileId: 'desktop', modules: ['telemetry'], vendors: ['acme', 'initech'], excluded: [] }, catalog)
     expect(plan.addresses.map((a) => a.file)).toEqual(['lists/modules/telemetry.txt', 'lists/vendors/initech.txt'])
+  })
+})
+
+describe('per-source exclusions', () => {
+  const base = { profileId: 'desktop', modules: ['telemetry'], vendors: [] as string[], excluded: [] as string[] }
+  it('replaces a module by its remaining source lists', () => {
+    const sel = toggleSource(base, 's-globex')
+    const plan = planAddresses(sel, catalog)
+    expect(plan.kind).toBe('parts')
+    expect(plan.addresses.map((a) => a.file)).toEqual(['lists/sources/s-acme.txt'])
+    expect(matchingProfile(sel, catalog)).toBeNull()
+  })
+  it('ignores exclusions of modules that are switched off', () => {
+    const sel = { ...base, modules: ['malware'], excluded: ['s-globex'] }
+    expect(activeExclusions(sel, catalog)).toEqual([])
+    expect(planAddresses(sel, catalog).addresses.map((a) => a.file)).toEqual(['lists/modules/malware.txt'])
+  })
+  it('a vendor stops being covered once its source is excluded', () => {
+    const sel = { ...base, vendors: ['acme', 'globex'], excluded: ['s-globex'] }
+    expect([...coveredVendors(sel, catalog).keys()]).toEqual(['acme'])
+    expect(effectiveItems(sel, catalog).map((i) => i.file)).toEqual(['lists/sources/s-acme.txt', 'lists/vendors/globex.txt'])
+  })
+  it('round-trips through the share link and drops unknown ids', () => {
+    const sel = toggleSource(base, 's-globex')
+    const qs = serializeSelection(sel, catalog)
+    expect(qs).toContain('x=s-globex')
+    expect(parseShareParams(`?${qs}`, catalog)).toEqual(sel)
+    expect(parseShareParams('?p=desktop&x=nope,s-acme', catalog).excluded).toEqual(['s-acme'])
+  })
+})
+
+import { detectLang } from './i18n'
+describe('language', () => {
+  it('prefers a stored choice, then the browser language', () => {
+    expect(detectLang('en', 'de-DE')).toBe('en')
+    expect(detectLang(null, 'de-AT')).toBe('de')
+    expect(detectLang('fr', 'fr-FR')).toBe('en')
   })
 })

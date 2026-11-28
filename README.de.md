@@ -38,8 +38,9 @@ Fertige, dauerhafte Adressen:
 | Tracking | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/tracking.txt` |
 | Telemetry (⚠ kann Updates und Geräte stören) | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/telemetry.txt` |
 | Malware | `https://jokeks2023.github.io/adaptive-blocklist/lists/modules/malware.txt` |
+| Eine einzelne Quelle, z. B. StevenBlack unified | `https://jokeks2023.github.io/adaptive-blocklist/lists/sources/stevenblack-unified.txt` (eine Datei pro aktiver Quelle) |
 
-Für jede Kombination zeigt der Konfigurator die dauerhaften Adressen zum Hinzufügen. Eine einzelne kombinierte Datei wird in deinem Browser zusammengesetzt
+In den Moduldetails kannst du einzelne Quellen abschalten (das Modul wird dann zu einer Liste pro verbleibender Quelle). Die Seite gibt es auf Englisch und Deutsch (Sprachknopf, standardmäßig nach Browsersprache). Für jede Kombination zeigt der Konfigurator die dauerhaften Adressen zum Hinzufügen. Eine einzelne kombinierte Datei wird in deinem Browser zusammengesetzt
 und hat **keine dauerhafte Abo-Adresse**; du kannst sie als TXT herunterladen und deine Auswahl als Link teilen.
 
 ## Gerätetypen, Module und Hersteller

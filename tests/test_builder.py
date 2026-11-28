@@ -138,3 +138,22 @@ def test_catalog_metadata_complete(config, fetcher):
     assert {"modules", "profiles", "sources", "build", "schema_version"} <= set(cat)
     stats = json.loads(out.files["data/stats.json"])
     assert stats["totals"]["sources_pending"] == 1 and stats["totals"]["sources_ok"] == 3
+
+
+def test_per_source_lists_are_published_and_modules_are_their_union(config, fetcher, tmp_path):
+    from blocklist.builder import build_all, write_output
+    from blocklist.validator import validate_output
+    from .conftest import META
+
+    out = build_all(config, fetcher, META)
+    assert not out.problems
+    assert "lists/sources/ads-a.txt" in out.files and "lists/sources/future.txt" not in out.files
+    src = {s["id"]: s for s in out.catalog["sources"]}
+    assert src["ads-a"]["file"] == "lists/sources/ads-a.txt" and src["ads-a"]["listed"] == 2
+    assert src["future"]["file"] is None
+    write_output(out, tmp_path)
+    assert validate_output(tmp_path, config) == []
+    # tampering with a source list must be caught
+    p = tmp_path / "lists/sources/trk.txt"
+    p.write_text(p.read_text() + "0.0.0.0 extra.example.org\n")
+    assert any("source 'trk'" in x for x in validate_output(tmp_path, config))

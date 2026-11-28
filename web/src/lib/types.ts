@@ -50,6 +50,10 @@ export interface SourceEntry {
   status: string
   domains: number
   error: string | null
+  /** Per-source list (absent in catalogs built before source lists existed). */
+  file?: string | null
+  listed?: number
+  bytes?: number
 }
 
 export interface Catalog {
@@ -66,4 +70,6 @@ export interface Selection {
   profileId: string
   modules: string[]
   vendors: string[]
+  /** Source ids switched off inside the enabled modules. */
+  excluded: string[]
 }

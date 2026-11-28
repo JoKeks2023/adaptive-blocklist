@@ -104,4 +104,36 @@ def validate_output(out_dir: Path, config: Config) -> list[str]:
                 expected |= vendor_sets.get(v, set())
             if set(domains) != expected:
                 problems.append(f"{label}: is not the union of its modules {entry['modules']} and vendors {entry.get('vendors', [])}")
+
+    # Per-source lists: same file checks, and every module/vendor must equal the union of its
+    # source lists (plus the deny list where configured), so the two views cannot drift apart.
+    source_sets: dict[str, set[str]] = {}
+    for src in catalog.get("sources", []):
+        if not src.get("file"):
+            continue
+        path = out_dir / src["file"]
+        domains = _read_list(path, problems)
+        if domains is None:
+            continue
+        label = f"source '{src['id']}'"
+        if hashlib.sha256(path.read_bytes()).hexdigest() != src["sha256"]:
+            problems.append(f"{label}: sha256 mismatch with catalog")
+        if len(domains) != src["listed"]:
+            problems.append(f"{label}: {len(domains)} domains in file but catalog says {src['listed']}")
+        if len(set(domains)) != len(domains) or domains != sorted(domains):
+            problems.append(f"{label}: duplicates or not sorted")
+        if config.allow and any(any(p in config.allow for p in parent_chain(d)) for d in domains):
+            problems.append(f"{label}: contains allow-listed domains")
+        source_sets[src["id"]] = set(domains)
+    for kind, group, sets in (("module", config.modules, module_sets), ("vendor", config.vendors, vendor_sets)):
+        for uid, unit in group.items():
+            if uid not in sets:
+                continue
+            expected: set[str] = set()
+            for sid in unit.sources:
+                expected |= source_sets.get(sid, set())
+            if unit.include_deny:
+                expected |= {d for d in config.deny if not any(p in config.allow for p in parent_chain(d))}
+            if sets[uid] != expected:
+                problems.append(f"{kind} '{uid}': is not the union of its source lists")
     return problems

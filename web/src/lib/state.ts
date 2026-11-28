@@ -13,7 +13,7 @@ const mods = (ids: string[], catalog: Catalog) => sanitize(ids, catalog.modules)
 const vends = (ids: string[], catalog: Catalog) => sanitize(ids, vendorsOf(catalog))
 
 function fromProfile(profile: ProfileEntry, catalog: Catalog): Selection {
-  return { profileId: profile.id, modules: mods(profile.modules, catalog), vendors: vends(profile.vendors ?? [], catalog) }
+  return { profileId: profile.id, modules: mods(profile.modules, catalog), vendors: vends(profile.vendors ?? [], catalog), excluded: [] }
 }
 
 export function defaultSelection(catalog: Catalog): Selection {
@@ -34,10 +34,13 @@ export function parseShareParams(search: string, catalog: Catalog): Selection {
   const base = selectProfile(params.get('p') ?? '', catalog)
   const m = params.get('m')
   const v = params.get('v')
+  const x = params.get('x')
+  const known = new Set(catalog.sources.map((s) => s.id))
   return {
     profileId: base.profileId,
     modules: m === null ? base.modules : mods(m.split(',').filter(Boolean), catalog),
     vendors: v === null ? base.vendors : vends(v.split(',').filter(Boolean), catalog),
+    excluded: x === null ? [] : [...new Set(x.split(',').filter((id) => known.has(id)))],
   }
 }
 
@@ -47,6 +50,7 @@ export function serializeSelection(sel: Selection, catalog: Catalog): string {
   const base = selectProfile(sel.profileId, catalog)
   if (!sameSet(sel.modules, base.modules)) params.set('m', sel.modules.join(','))
   if (!sameSet(sel.vendors, base.vendors)) params.set('v', sel.vendors.join(','))
+  if (sel.excluded.length > 0) params.set('x', sel.excluded.join(','))
   return params.toString().replace(/%2C/g, ',')
 }
 
@@ -55,7 +59,7 @@ export function matchingProfile(sel: Selection, catalog: Catalog): ProfileEntry 
   return (
     catalog.profiles.find((p) => {
       const s = fromProfile(p, catalog)
-      return sameSet(sel.modules, s.modules) && sameSet(sel.vendors, s.vendors)
+      return sameSet(sel.modules, s.modules) && sameSet(sel.vendors, s.vendors) && activeExclusions(sel, catalog).length === 0
     }) ?? null
   )
 }
@@ -63,6 +67,34 @@ export function matchingProfile(sel: Selection, catalog: Catalog): ProfileEntry 
 export function toggleModule(sel: Selection, id: string, catalog: Catalog): Selection {
   const next = sel.modules.includes(id) ? sel.modules.filter((m) => m !== id) : [...sel.modules, id]
   return { ...sel, modules: mods(next, catalog) }
+}
+
+export function toggleSource(sel: Selection, id: string): Selection {
+  return { ...sel, excluded: sel.excluded.includes(id) ? sel.excluded.filter((x) => x !== id) : [...sel.excluded, id] }
+}
+
+const hasList = (catalog: Catalog, id: string) => !!catalog.sources.find((s) => s.id === id)?.file
+
+/** Excluded sources that actually matter: they sit in an enabled module and have their own list. */
+export function activeExclusions(sel: Selection, catalog: Catalog): string[] {
+  const inEnabled = new Set(catalog.modules.filter((m) => sel.modules.includes(m.id)).flatMap((m) => m.sources))
+  return sel.excluded.filter((id) => inEnabled.has(id) && hasList(catalog, id))
+}
+
+/** Sources of a module that stay on after exclusions. */
+const remainingSources = (m: ModuleEntry, sel: Selection) => m.sources.filter((s) => !sel.excluded.includes(s))
+
+/**
+ * A module with some sources switched off is replaced by one list per remaining source.
+ * Returns null when the module is used unchanged.
+ */
+function sourceParts(m: ModuleEntry, sel: Selection, catalog: Catalog): ModuleEntry[] | null {
+  if (m.include_deny || !m.sources.some((s) => sel.excluded.includes(s) && hasList(catalog, s))) return null
+  return remainingSources(m, sel).flatMap((id) => {
+    const s = catalog.sources.find((x) => x.id === id)
+    if (!s?.file) return []
+    return [{ ...m, id: `${m.id}:${id}`, name: s.name, description: s.purpose, domains: s.listed ?? s.domains, file: s.file, bytes: s.bytes ?? 0, sources: [id], pending_sources: [] }]
+  })
 }
 
 export function toggleVendor(sel: Selection, id: string, catalog: Catalog): Selection {
@@ -79,7 +111,7 @@ export function coveredVendors(sel: Selection, catalog: Catalog): Map<string, st
   const enabled = catalog.modules.filter((m) => sel.modules.includes(m.id))
   for (const v of vendorsOf(catalog)) {
     if (v.sources.length === 0) continue
-    const by = enabled.find((m) => v.sources.every((s) => m.sources.includes(s)))
+    const by = enabled.find((m) => v.sources.every((s) => remainingSources(m, sel).includes(s)))
     if (by) covered.set(v.id, by.name)
   }
   return covered
@@ -88,10 +120,12 @@ export function coveredVendors(sel: Selection, catalog: Catalog): Map<string, st
 /** Everything that actually has to be fetched/merged: enabled modules + vendors not covered by a module. */
 export function effectiveItems(sel: Selection, catalog: Catalog): ModuleEntry[] {
   const covered = coveredVendors(sel, catalog)
-  return [
-    ...catalog.modules.filter((m) => sel.modules.includes(m.id)),
+  const all = [
+    ...catalog.modules.filter((m) => sel.modules.includes(m.id)).flatMap((m) => sourceParts(m, sel, catalog) ?? [m]),
     ...vendorsOf(catalog).filter((v) => sel.vendors.includes(v.id) && !covered.has(v.id)),
   ]
+  const seen = new Set<string>()
+  return all.filter((i) => !seen.has(i.file) && !!seen.add(i.file))
 }
 
 export interface Address {
@@ -123,7 +157,7 @@ export function planAddresses(sel: Selection, catalog: Catalog): Plan {
     [catalog.profiles.find((p) => p.id === sel.profileId), ...catalog.profiles].find(
       (p) => p && sameSet(sel.modules, mods(p.modules, catalog)) && (p.vendors ?? []).every((v) => sel.vendors.includes(v)),
     ) ?? null
-  if (base && vendors.length > 0) {
+  if (base && vendors.length > 0 && activeExclusions(sel, catalog).length === 0) {
     const own = new Set(base.vendors ?? [])
     const extra = vendors.filter((v) => !own.has(v.id))
     const addresses = [{ label: `${base.name} base`, file: base.file, domains: base.domains }, ...extra.map((v) => ({ label: v.name, file: v.file, domains: v.domains }))]

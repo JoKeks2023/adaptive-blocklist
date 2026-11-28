@@ -160,6 +160,29 @@ def build_all(config: Config, fetcher: Fetcher, meta: BuildMeta) -> BuildOutput:
     needed = dict.fromkeys(sid for m in units.values() for sid in m.sources)
     results = {sid: fetch_source(config.sources[sid], fetcher) for sid in needed}
 
+    # 1b. One list per usable source (allow-list applied), so a configurator can offer
+    #     "this module, but without source X" with permanent addresses.
+    source_files: dict[str, dict] = {}
+    for sid, result in results.items():
+        if result.status != OK:
+            continue
+        kept = apply_allowlist(result.domains, config.allow)
+        text = render_list(
+            f"Universal Blocklist - Source {result.source.name}",
+            result.source.purpose,
+            sorted(kept),
+            meta,
+            [result.source],
+        )
+        path = f"lists/sources/{sid}.txt"
+        files[path] = text
+        source_files[sid] = {
+            "file": path,
+            "listed": len(kept),
+            "sha256": _sha256(text),
+            "bytes": len(text.encode("utf-8")),
+        }
+
     # 2. Modules (content categories) and vendors (per-manufacturer lists) are built identically.
     def build_unit(unit: Module, kind: str) -> tuple[set[str], dict]:
         domains, unit_problems = build_module(unit, results, config)
@@ -254,6 +277,7 @@ def build_all(config: Config, fetcher: Fetcher, meta: BuildMeta) -> BuildOutput:
                 "domains": len(result.domains) if result else 0,
                 "invalid_entries": result.invalid if result else 0,
                 "error": (result.error if result else source.pending_reason) or None,
+                **(source_files.get(sid) or {"file": None, "listed": 0, "sha256": None, "bytes": 0}),
                 "modules": [m.id for m in config.modules.values() if sid in m.sources],
                 "vendors": [v.id for v in config.vendors.values() if sid in v.sources],
             }
